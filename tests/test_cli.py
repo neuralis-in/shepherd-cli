@@ -535,9 +535,7 @@ class TestSessionsDiffCommand:
 
         with patch("shepherd.cli.sessions.get_api_key", return_value="test_key"):
             with patch("shepherd.cli.sessions.AIOBSClient", return_value=mock_client):
-                result = runner.invoke(
-                    app, ["sessions", "diff", "session-diff-001", "nonexistent"]
-                )
+                result = runner.invoke(app, ["sessions", "diff", "session-diff-001", "nonexistent"])
 
         assert result.exit_code == 1
         assert "Session not found" in result.stdout

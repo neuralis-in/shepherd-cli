@@ -531,11 +531,9 @@ class SessionDiff:
         for event in events:
             if event.response and "usage" in event.response:
                 usage = event.response["usage"]
-                total["input"] += (
-                    usage.get("prompt_tokens", 0) or usage.get("input_tokens", 0)
-                )
-                total["output"] += (
-                    usage.get("completion_tokens", 0) or usage.get("output_tokens", 0)
+                total["input"] += usage.get("prompt_tokens", 0) or usage.get("input_tokens", 0)
+                total["output"] += usage.get("completion_tokens", 0) or usage.get(
+                    "output_tokens", 0
                 )
                 total["total"] += usage.get("total_tokens", 0)
         return total
@@ -708,9 +706,7 @@ class SessionDiff:
 
             # Extract user message preview
             messages = event.request.get("messages", [])
-            user_msgs = [
-                m for m in messages if isinstance(m, dict) and m.get("role") == "user"
-            ]
+            user_msgs = [m for m in messages if isinstance(m, dict) and m.get("role") == "user"]
             if user_msgs:
                 last_user = user_msgs[-1]
                 content = last_user.get("content", "")
@@ -789,7 +785,8 @@ class SessionDiff:
                     content = " ".join(text_blocks)
                     # Check for tool use
                     tool_uses = [
-                        b for b in content_blocks
+                        b
+                        for b in content_blocks
                         if isinstance(b, dict) and b.get("type") == "tool_use"
                     ]
                     if tool_uses:
@@ -823,9 +820,7 @@ class SessionDiff:
             responses.append(resp)
         return responses
 
-    def _compare_system_prompts(
-        self, prompts1: list[dict], prompts2: list[dict]
-    ) -> dict:
+    def _compare_system_prompts(self, prompts1: list[dict], prompts2: list[dict]) -> dict:
         """Compare system prompts between sessions."""
         # Get unique prompts by content
         set1 = {p["content"] for p in prompts1}
@@ -840,10 +835,9 @@ class SessionDiff:
             "changed": len(set1) != len(set2) or set1 != set2,
         }
 
-    def _compare_request_params(
-        self, params1: list[dict], params2: list[dict]
-    ) -> dict:
+    def _compare_request_params(self, params1: list[dict], params2: list[dict]) -> dict:
         """Compare request parameters between sessions."""
+
         # Aggregate parameters
         def aggregate_params(params_list: list[dict]) -> dict:
             agg: dict = {
@@ -900,10 +894,9 @@ class SessionDiff:
             "tools_removed": list(set(agg1["tools_used"]) - set(agg2["tools_used"])),
         }
 
-    def _compare_responses(
-        self, responses1: list[dict], responses2: list[dict]
-    ) -> dict:
+    def _compare_responses(self, responses1: list[dict], responses2: list[dict]) -> dict:
         """Compare responses between sessions."""
+
         def summarize_responses(resp_list: list[dict]) -> dict:
             total_content_len = 0
             tool_call_count = 0
@@ -938,9 +931,7 @@ class SessionDiff:
                 "avg_content_length": (
                     summary2["avg_content_length"] - summary1["avg_content_length"]
                 ),
-                "tool_call_count": (
-                    summary2["tool_call_count"] - summary1["tool_call_count"]
-                ),
+                "tool_call_count": (summary2["tool_call_count"] - summary1["tool_call_count"]),
             },
         }
 
@@ -1178,10 +1169,10 @@ def _print_session_diff(diff: dict) -> None:
     s2_meta = meta["session2"]
 
     # Header panel
-    s1_started = _format_timestamp(s1_meta['started_at'])
-    s2_started = _format_timestamp(s2_meta['started_at'])
-    header = f"""[bold]Session 1:[/bold] {s1_meta['id'][:12]}... ({s1_meta['name']})
-[bold]Session 2:[/bold] {s2_meta['id'][:12]}... ({s2_meta['name']})
+    s1_started = _format_timestamp(s1_meta["started_at"])
+    s2_started = _format_timestamp(s2_meta["started_at"])
+    header = f"""[bold]Session 1:[/bold] {s1_meta["id"][:12]}... ({s1_meta["name"]})
+[bold]Session 2:[/bold] {s2_meta["id"][:12]}... ({s2_meta["name"]})
 [bold]Started:[/bold]   {s1_started} → {s2_started}"""
 
     console.print(Panel(header, title="[bold]Session Diff[/bold]", expand=False))
@@ -1340,23 +1331,17 @@ def _print_session_diff(diff: dict) -> None:
         # Functions only in one session
         if fns["only_in_session1"]:
             fns_s1 = ", ".join(fns["only_in_session1"])
-            console.print(
-                f"[bold]Functions only in Session 1:[/bold] [red]{fns_s1}[/red]"
-            )
+            console.print(f"[bold]Functions only in Session 1:[/bold] [red]{fns_s1}[/red]")
         if fns["only_in_session2"]:
             fns_s2 = ", ".join(fns["only_in_session2"])
-            console.print(
-                f"[bold]Functions only in Session 2:[/bold] [green]{fns_s2}[/green]"
-            )
+            console.print(f"[bold]Functions only in Session 2:[/bold] [green]{fns_s2}[/green]")
         if fns["only_in_session1"] or fns["only_in_session2"]:
             console.print()
 
     # Trace comparison
     trace = diff["trace"]
     if trace["session1"]["root_nodes"] > 0 or trace["session2"]["root_nodes"] > 0:
-        trace_table = Table(
-            title="Trace Structure", show_header=True, header_style="bold cyan"
-        )
+        trace_table = Table(title="Trace Structure", show_header=True, header_style="bold cyan")
         trace_table.add_column("Metric", style="bold")
         trace_table.add_column("Session 1", justify="right")
         trace_table.add_column("Session 2", justify="right")
@@ -1381,9 +1366,7 @@ def _print_session_diff(diff: dict) -> None:
     # Evaluations comparison
     evals = diff["evaluations"]
     if evals["session1"]["total"] > 0 or evals["session2"]["total"] > 0:
-        eval_table = Table(
-            title="Evaluation Results", show_header=True, header_style="bold cyan"
-        )
+        eval_table = Table(title="Evaluation Results", show_header=True, header_style="bold cyan")
         eval_table.add_column("Metric", style="bold")
         eval_table.add_column("Session 1", justify="right")
         eval_table.add_column("Session 2", justify="right")
@@ -1574,13 +1557,9 @@ def _print_session_diff(diff: dict) -> None:
         if tools1 or tools2:
             console.print("[bold]Tools Used:[/bold]")
             if tools_added:
-                console.print(
-                    f"  [green]+ Added:[/green] {', '.join(tools_added)}"
-                )
+                console.print(f"  [green]+ Added:[/green] {', '.join(tools_added)}")
             if tools_removed:
-                console.print(
-                    f"  [red]- Removed:[/red] {', '.join(tools_removed)}"
-                )
+                console.print(f"  [red]- Removed:[/red] {', '.join(tools_removed)}")
             common_tools = tools1 & tools2
             if common_tools:
                 console.print(f"  [dim]Common:[/dim] {', '.join(common_tools)}")
@@ -1593,9 +1572,7 @@ def _print_session_diff(diff: dict) -> None:
     resp_delta = resp_data.get("delta", {})
 
     if s1_resp_summary or s2_resp_summary:
-        resp_table = Table(
-            title="Response Summary", show_header=True, header_style="bold cyan"
-        )
+        resp_table = Table(title="Response Summary", show_header=True, header_style="bold cyan")
         resp_table.add_column("Metric", style="bold")
         resp_table.add_column("Session 1", justify="right")
         resp_table.add_column("Session 2", justify="right")
@@ -1635,9 +1612,7 @@ def _print_session_diff(diff: dict) -> None:
         stop1 = s1_resp_summary.get("stop_reasons", {})
         stop2 = s2_resp_summary.get("stop_reasons", {})
         if stop1 or stop2:
-            stop_table = Table(
-                title="Stop Reasons", show_header=True, header_style="bold cyan"
-            )
+            stop_table = Table(title="Stop Reasons", show_header=True, header_style="bold cyan")
             stop_table.add_column("Reason", style="bold")
             stop_table.add_column("Session 1", justify="right")
             stop_table.add_column("Session 2", justify="right")
