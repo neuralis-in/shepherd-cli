@@ -3,7 +3,6 @@
 from io import StringIO
 from unittest.mock import MagicMock, patch
 
-import pytest
 from typer.testing import CliRunner
 
 from shepherd.cli.main import app
@@ -26,7 +25,7 @@ class TestShepherdShellInit:
     """Tests for ShepherdShell initialization."""
 
     def test_shell_creates_commands(self):
-        shell = ShepherdShell()
+        ShepherdShell()  # Initialize to populate SHELL_COMMANDS
         assert "sessions list" in SHELL_COMMANDS
         assert "sessions get" in SHELL_COMMANDS
         assert "config init" in SHELL_COMMANDS
@@ -35,7 +34,7 @@ class TestShepherdShellInit:
         assert "config get" in SHELL_COMMANDS
 
     def test_shell_commands_are_callable(self):
-        shell = ShepherdShell()
+        ShepherdShell()  # Initialize to populate SHELL_COMMANDS
         for cmd_name, (func, desc) in SHELL_COMMANDS.items():
             assert callable(func), f"Command {cmd_name} is not callable"
             assert isinstance(desc, str), f"Command {cmd_name} has no description"
@@ -279,9 +278,13 @@ class TestPrintHelp:
     def test_print_help_shows_all_groups(self):
         shell = ShepherdShell()
         output = StringIO()
-        with patch.object(shell.console, "print", side_effect=lambda *a, **k: print(*a, file=output)):
+
+        def mock_print(*a, **k):
+            print(*a, file=output)
+
+        with patch.object(shell.console, "print", side_effect=mock_print):
             shell._print_help()
-        
+
         output_str = output.getvalue()
         assert "Sessions" in output_str
         assert "Config" in output_str
@@ -290,9 +293,13 @@ class TestPrintHelp:
     def test_print_help_shows_commands(self):
         shell = ShepherdShell()
         output = StringIO()
-        with patch.object(shell.console, "print", side_effect=lambda *a, **k: print(*a, file=output)):
+
+        def mock_print(*a, **k):
+            print(*a, file=output)
+
+        with patch.object(shell.console, "print", side_effect=mock_print):
             shell._print_help()
-        
+
         output_str = output.getvalue()
         assert "sessions list" in output_str
         assert "sessions get" in output_str
@@ -367,11 +374,12 @@ class TestPromptToolkitIntegration:
     """Tests for prompt_toolkit integration."""
 
     def test_completer_includes_all_commands(self):
-        shell = ShepherdShell()
-        
+        ShepherdShell()  # Initialize to populate SHELL_COMMANDS
+
         # Get base commands
-        base_commands = list(SHELL_COMMANDS.keys()) + ["help", "clear", "version", "exit", "quit"]
-        
+        builtin = ["help", "clear", "version", "exit", "quit"]
+        base_commands = list(SHELL_COMMANDS.keys()) + builtin
+
         # All commands should be registered
         for cmd in ["sessions list", "sessions get", "config init", "config show"]:
             assert cmd in base_commands or cmd in SHELL_COMMANDS
@@ -379,9 +387,9 @@ class TestPromptToolkitIntegration:
     def test_run_with_prompt_toolkit_fallback(self):
         """Test that shell falls back to basic input when prompt_toolkit unavailable."""
         shell = ShepherdShell()
-        
+
         with patch.dict("sys.modules", {"prompt_toolkit": None}):
-            with patch.object(shell, "run") as mock_run:
+            with patch.object(shell, "run"):
                 # Import error should trigger fallback
                 try:
                     shell.run_with_prompt_toolkit()

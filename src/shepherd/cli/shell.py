@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import shlex
-from typing import Callable
+from collections.abc import Callable
 
 import typer
 from rich.console import Console
@@ -119,10 +119,10 @@ class ShepherdShell:
             self.console.print()
 
         self.console.print("[dim]Tip: Commands work the same as CLI commands.[/dim]")
-        self.console.print("[dim]You can use [/dim][cyan]/command[/cyan][dim] or [/dim][cyan]command[/cyan][dim] syntax.[/dim]")
         self.console.print(
-            "[dim]Example: [/dim][cyan]/sessions list --limit 5[/cyan]\n"
+            "[dim]Syntax:[/dim] [cyan]/command[/cyan] [dim]or[/dim] [cyan]command[/cyan]"
         )
+        self.console.print("[dim]Example:[/dim] [cyan]/sessions list --limit 5[/cyan]\n")
 
     def _parse_command(self, line: str) -> tuple[str, list[str]]:
         """Parse a command line into command and arguments."""
@@ -285,7 +285,8 @@ class ShepherdShell:
             history = FileHistory(str(history_file))
 
             # Create completer with commands (both with and without / prefix)
-            base_commands = list(SHELL_COMMANDS.keys()) + ["help", "clear", "version", "exit", "quit"]
+            builtin = ["help", "clear", "version", "exit", "quit"]
+            base_commands = list(SHELL_COMMANDS.keys()) + builtin
             commands = base_commands + [f"/{cmd}" for cmd in base_commands]
             completer = WordCompleter(commands, ignore_case=True)
 
