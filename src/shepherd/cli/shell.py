@@ -344,4 +344,3 @@ def shell_main(ctx: typer.Context):
     """Start an interactive Shepherd shell."""
     if ctx.invoked_subcommand is None:
         start_shell()
-

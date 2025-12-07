@@ -315,12 +315,13 @@ class TestPrintWelcome:
         shell = ShepherdShell()
         with patch.object(shell.console, "print") as mock_print:
             shell._print_welcome()
-        
+
         # Should print at least twice (Panel and newline)
         assert mock_print.call_count >= 1
         # First call should be a Panel
         first_call_args = mock_print.call_args_list[0]
         from rich.panel import Panel
+
         assert isinstance(first_call_args[0][0], Panel)
 
 
@@ -329,44 +330,44 @@ class TestShellRunLoop:
 
     def test_run_handles_keyboard_interrupt(self):
         shell = ShepherdShell()
-        
+
         # Simulate Ctrl+C then exit
         call_count = [0]
-        
+
         def mock_input():
             call_count[0] += 1
             if call_count[0] == 1:
                 raise KeyboardInterrupt()
             return "exit"
-        
+
         with patch.object(shell, "_print_welcome"):
             with patch.object(shell.console, "print"):
                 with patch("builtins.input", mock_input):
                     shell.run()
-        
+
         assert shell.running is False
 
     def test_run_handles_eof(self):
         shell = ShepherdShell()
-        
+
         with patch.object(shell, "_print_welcome"):
             with patch.object(shell.console, "print"):
                 with patch("builtins.input", side_effect=EOFError()):
                     shell.run()
-        
+
         assert shell.running is False
 
     def test_run_executes_commands(self):
         shell = ShepherdShell()
-        
+
         inputs = iter(["help", "version", "exit"])
-        
+
         with patch.object(shell, "_print_welcome"):
             with patch.object(shell.console, "print"):
                 with patch.object(shell.console, "clear"):
                     with patch("builtins.input", lambda: next(inputs)):
                         shell.run()
-        
+
         assert shell.running is False
 
 
@@ -395,4 +396,3 @@ class TestPromptToolkitIntegration:
                     shell.run_with_prompt_toolkit()
                 except ImportError:
                     pass
-
