@@ -229,6 +229,19 @@ class TestParseArgs:
         )
         assert kwargs == {"after": "2025-01-01", "before": "2025-12-31"}
 
+    def test_parse_diff_positional_args(self):
+        shell = ShepherdShell()
+        kwargs = shell._parse_args("sessions diff", ["session-1", "session-2"])
+        assert kwargs["session_id1"] == "session-1"
+        assert kwargs["session_id2"] == "session-2"
+
+    def test_parse_diff_with_output_flag(self):
+        shell = ShepherdShell()
+        kwargs = shell._parse_args("sessions diff", ["session-1", "session-2", "-o", "json"])
+        assert kwargs["session_id1"] == "session-1"
+        assert kwargs["session_id2"] == "session-2"
+        assert kwargs["output"] == "json"
+
 
 class TestExecuteCommand:
     """Tests for _execute_command method."""
@@ -384,6 +397,52 @@ class TestSessionsCommands:
 
         assert result is True
 
+    def test_sessions_diff_in_shell(self, diff_session_response_1, diff_session_response_2):
+        """Test sessions diff command in shell."""
+        shell = ShepherdShell()
+        mock_client = MagicMock()
+
+        def mock_get_session(session_id):
+            if session_id == "session-diff-001":
+                return SessionsResponse(**diff_session_response_1)
+            return SessionsResponse(**diff_session_response_2)
+
+        mock_client.get_session.side_effect = mock_get_session
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+
+        with patch("shepherd.cli.sessions.get_api_key", return_value="test_key"):
+            with patch("shepherd.cli.sessions.AIOBSClient", return_value=mock_client):
+                result = shell._execute_command(
+                    "sessions diff", ["session-diff-001", "session-diff-002"]
+                )
+
+        assert result is True
+
+    def test_sessions_diff_with_output_in_shell(
+        self, diff_session_response_1, diff_session_response_2
+    ):
+        """Test sessions diff command with JSON output in shell."""
+        shell = ShepherdShell()
+        mock_client = MagicMock()
+
+        def mock_get_session(session_id):
+            if session_id == "session-diff-001":
+                return SessionsResponse(**diff_session_response_1)
+            return SessionsResponse(**diff_session_response_2)
+
+        mock_client.get_session.side_effect = mock_get_session
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+
+        with patch("shepherd.cli.sessions.get_api_key", return_value="test_key"):
+            with patch("shepherd.cli.sessions.AIOBSClient", return_value=mock_client):
+                result = shell._execute_command(
+                    "sessions diff", ["session-diff-001", "session-diff-002", "-o", "json"]
+                )
+
+        assert result is True
+
 
 class TestConfigCommands:
     """Tests for config commands in shell."""
@@ -431,6 +490,7 @@ class TestPrintHelp:
         assert "sessions list" in output_str
         assert "sessions get" in output_str
         assert "sessions search" in output_str
+        assert "sessions diff" in output_str
         assert "config init" in output_str
         assert "help" in output_str
         assert "exit" in output_str

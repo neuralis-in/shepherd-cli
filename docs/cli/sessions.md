@@ -106,6 +106,77 @@ shepherd sessions search "agent" --provider openai --model gpt-4 --has-errors
 shepherd sessions search -p anthropic -l user=alice --after 2025-12-01 -n 10
 ```
 
+## `shepherd sessions diff`
+
+Compare two sessions and show their differences.
+
+```bash
+shepherd sessions diff <session-id1> <session-id2> [OPTIONS]
+```
+
+**Arguments:**
+
+| Argument | Description |
+|----------|-------------|
+| `SESSION_ID1` | First session ID (baseline) |
+| `SESSION_ID2` | Second session ID (comparison) |
+
+**Options:**
+
+| Option | Short | Description |
+|--------|-------|-------------|
+| `--output` | `-o` | Output format: `table` or `json` |
+
+**What it compares:**
+
+- **Metadata**: Duration, labels, meta fields
+- **LLM Calls**: Total calls, tokens (input/output/total), latency, errors
+- **Provider Distribution**: Calls per provider (OpenAI, Anthropic, etc.)
+- **Model Distribution**: Calls per model (gpt-4, claude-3, etc.)
+- **Function Events**: Total calls, unique functions, duration
+- **Trace Structure**: Trace depth, root nodes
+- **Evaluations**: Total, passed, failed, pass rate
+- **System Prompts**: Compares system prompts used in each session
+- **Request Parameters**: Temperature, max tokens, tools used, streaming
+- **Responses**: Content length, tool calls, stop reasons
+
+**Examples:**
+
+```bash
+# Basic comparison
+shepherd sessions diff abc123 def456
+
+# Output as JSON
+shepherd sessions diff abc123 def456 -o json
+
+# Compare baseline vs experiment
+shepherd sessions diff baseline-session-id experiment-session-id
+```
+
+**Example Output:**
+
+```
+╭───────────────────── Session Diff ─────────────────────╮
+│ Session 1: abc12345... (baseline-agent)                │
+│ Session 2: def67890... (updated-agent)                 │
+╰────────────────────────────────────────────────────────╯
+
+┏━━━━━━━━━━━ LLM Calls Summary ━━━━━━━━━━━┓
+│ Metric        │ S1    │ S2    │ Delta   │
+├───────────────┼───────┼───────┼─────────┤
+│ Total Calls   │ 5     │ 8     │ +3      │
+│ Total Tokens  │ 1,200 │ 1,800 │ +600    │
+│ Avg Latency   │ 2.0s  │ 1.5s  │ -500ms  │
+└───────────────┴───────┴───────┴─────────┘
+
+⚠ System prompts differ between sessions
+
+Tools Used:
+  + Added: run_security_scan
+  - Removed: search_code
+  Common: get_file_contents
+```
+
 ## Scripting
 
 ```bash
@@ -128,5 +199,12 @@ done
 
 # Search for production sessions with failed evals
 shepherd sessions search -l env=production --evals-failed -o json | jq '.sessions'
+
+# Compare latest two sessions
+SESSIONS=($(shepherd sessions list --ids -n 2))
+shepherd sessions diff "${SESSIONS[0]}" "${SESSIONS[1]}"
+
+# Export diff to JSON for analysis
+shepherd sessions diff session-v1 session-v2 -o json > diff_report.json
 ```
 

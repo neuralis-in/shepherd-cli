@@ -41,7 +41,12 @@ class ShepherdShell:
         """Set up built-in shell commands."""
         # Import here to avoid circular imports
         from shepherd.cli.config import get_config, init_config, set_config, show_config
-        from shepherd.cli.sessions import get_session, list_sessions, search_sessions
+        from shepherd.cli.sessions import (
+            diff_sessions,
+            get_session,
+            list_sessions,
+            search_sessions,
+        )
 
         # Sessions commands - pass explicit defaults since typer.Option() returns objects
         def _list_sessions(output=None, limit=None, ids_only=False):
@@ -79,9 +84,13 @@ class ShepherdShell:
                 ids_only=ids_only,
             )
 
+        def _diff_sessions(session_id1, session_id2, output=None):
+            diff_sessions(session_id1=session_id1, session_id2=session_id2, output=output)
+
         SHELL_COMMANDS["sessions list"] = (_list_sessions, "List all sessions")
         SHELL_COMMANDS["sessions get"] = (_get_session, "Get details for a specific session")
         SHELL_COMMANDS["sessions search"] = (_search_sessions, "Search and filter sessions")
+        SHELL_COMMANDS["sessions diff"] = (_diff_sessions, "Compare two sessions")
 
         # Config commands
         def _config_init():
@@ -127,7 +136,7 @@ class ShepherdShell:
 
         # Group commands
         groups = {
-            "Sessions": ["sessions list", "sessions get", "sessions search"],
+            "Sessions": ["sessions list", "sessions get", "sessions search", "sessions diff"],
             "Config": ["config init", "config show", "config set", "config get"],
             "Shell": ["help", "clear", "version", "exit", "quit"],
         }
@@ -282,6 +291,9 @@ class ShepherdShell:
             kwargs["session_id"] = positional[0]
         elif cmd == "sessions search" and positional:
             kwargs["query"] = positional[0]
+        elif cmd == "sessions diff" and len(positional) >= 2:
+            kwargs["session_id1"] = positional[0]
+            kwargs["session_id2"] = positional[1]
         elif cmd == "config set" and len(positional) >= 2:
             kwargs["key"] = positional[0]
             kwargs["value"] = positional[1]

@@ -79,6 +79,10 @@ shepherd sessions search --before 2025-12-07  # Sessions before date
 shepherd sessions search --has-errors         # Only sessions with errors
 shepherd sessions search --evals-failed       # Only sessions with failed evaluations
 
+# Compare two sessions
+shepherd sessions diff <id1> <id2>            # Compare sessions side-by-side
+shepherd sessions diff <id1> <id2> -o json    # Output diff as JSON
+
 # Combine filters
 shepherd sessions search --provider anthropic --label user=alice --after 2025-12-01
 shepherd sessions search "agent" --model claude-3 --evals-failed -n 5
@@ -94,6 +98,8 @@ Inside the shell:
 ```
 shepherd > sessions list
 shepherd > sessions get <id>
+shepherd > sessions search --provider openai
+shepherd > sessions diff <id1> <id2>
 shepherd > config show
 shepherd > help
 shepherd > exit

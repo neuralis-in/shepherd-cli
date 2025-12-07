@@ -446,3 +446,304 @@ class TestSessionsSearchCommand:
 
         assert result.exit_code != 0
         assert "Invalid date format" in result.output
+
+
+class TestSessionsDiffCommand:
+    """Tests for sessions diff command."""
+
+    def test_sessions_diff_help(self):
+        """Diff help shows correct information."""
+        result = runner.invoke(app, ["sessions", "diff", "--help"])
+        assert result.exit_code == 0
+        assert "Compare two sessions" in result.stdout
+        assert "SESSION_ID1" in result.stdout
+        assert "SESSION_ID2" in result.stdout
+
+    def test_sessions_diff_no_api_key(self):
+        """Diff without API key shows error."""
+        with patch("shepherd.cli.sessions.get_api_key", return_value=None):
+            result = runner.invoke(app, ["sessions", "diff", "session1", "session2"])
+            assert result.exit_code == 1
+            assert "No API key configured" in result.stdout
+
+    def test_sessions_diff_success(self, diff_session_response_1, diff_session_response_2):
+        """Diff with valid sessions shows comparison."""
+        mock_client = MagicMock()
+
+        def mock_get_session(session_id):
+            if session_id == "session-diff-001":
+                return SessionsResponse(**diff_session_response_1)
+            return SessionsResponse(**diff_session_response_2)
+
+        mock_client.get_session.side_effect = mock_get_session
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+
+        with patch("shepherd.cli.sessions.get_api_key", return_value="test_key"):
+            with patch("shepherd.cli.sessions.AIOBSClient", return_value=mock_client):
+                result = runner.invoke(
+                    app, ["sessions", "diff", "session-diff-001", "session-diff-002"]
+                )
+
+        assert result.exit_code == 0
+        assert "Session Diff" in result.stdout
+        assert "baseline-agent" in result.stdout
+        assert "updated-agent" in result.stdout
+        assert "LLM Calls Summary" in result.stdout
+
+    def test_sessions_diff_json_output(self, diff_session_response_1, diff_session_response_2):
+        """Diff with JSON output returns valid JSON."""
+        mock_client = MagicMock()
+
+        def mock_get_session(session_id):
+            if session_id == "session-diff-001":
+                return SessionsResponse(**diff_session_response_1)
+            return SessionsResponse(**diff_session_response_2)
+
+        mock_client.get_session.side_effect = mock_get_session
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+
+        with patch("shepherd.cli.sessions.get_api_key", return_value="test_key"):
+            with patch("shepherd.cli.sessions.AIOBSClient", return_value=mock_client):
+                result = runner.invoke(
+                    app,
+                    ["sessions", "diff", "session-diff-001", "session-diff-002", "-o", "json"],
+                )
+
+        assert result.exit_code == 0
+        # Check JSON structure
+        assert '"metadata"' in result.stdout
+        assert '"llm_calls"' in result.stdout
+        assert '"functions"' in result.stdout
+        assert '"delta"' in result.stdout
+
+    def test_sessions_diff_session_not_found(self, diff_session_response_1):
+        """Diff with non-existent session shows error."""
+        from shepherd.providers.aiobs import SessionNotFoundError
+
+        mock_client = MagicMock()
+
+        def mock_get_session(session_id):
+            if session_id == "session-diff-001":
+                return SessionsResponse(**diff_session_response_1)
+            raise SessionNotFoundError("Session not found: nonexistent")
+
+        mock_client.get_session.side_effect = mock_get_session
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+
+        with patch("shepherd.cli.sessions.get_api_key", return_value="test_key"):
+            with patch("shepherd.cli.sessions.AIOBSClient", return_value=mock_client):
+                result = runner.invoke(
+                    app, ["sessions", "diff", "session-diff-001", "nonexistent"]
+                )
+
+        assert result.exit_code == 1
+        assert "Session not found" in result.stdout
+
+    def test_sessions_diff_shows_token_comparison(
+        self, diff_session_response_1, diff_session_response_2
+    ):
+        """Diff shows token usage comparison."""
+        mock_client = MagicMock()
+
+        def mock_get_session(session_id):
+            if session_id == "session-diff-001":
+                return SessionsResponse(**diff_session_response_1)
+            return SessionsResponse(**diff_session_response_2)
+
+        mock_client.get_session.side_effect = mock_get_session
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+
+        with patch("shepherd.cli.sessions.get_api_key", return_value="test_key"):
+            with patch("shepherd.cli.sessions.AIOBSClient", return_value=mock_client):
+                result = runner.invoke(
+                    app, ["sessions", "diff", "session-diff-001", "session-diff-002"]
+                )
+
+        assert result.exit_code == 0
+        assert "Total Tokens" in result.stdout
+        assert "Input Tokens" in result.stdout
+        assert "Output Tokens" in result.stdout
+
+    def test_sessions_diff_shows_provider_distribution(
+        self, diff_session_response_1, diff_session_response_2
+    ):
+        """Diff shows provider distribution comparison."""
+        mock_client = MagicMock()
+
+        def mock_get_session(session_id):
+            if session_id == "session-diff-001":
+                return SessionsResponse(**diff_session_response_1)
+            return SessionsResponse(**diff_session_response_2)
+
+        mock_client.get_session.side_effect = mock_get_session
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+
+        with patch("shepherd.cli.sessions.get_api_key", return_value="test_key"):
+            with patch("shepherd.cli.sessions.AIOBSClient", return_value=mock_client):
+                result = runner.invoke(
+                    app, ["sessions", "diff", "session-diff-001", "session-diff-002"]
+                )
+
+        assert result.exit_code == 0
+        assert "Provider Distribution" in result.stdout
+        assert "openai" in result.stdout
+        assert "anthropic" in result.stdout
+
+    def test_sessions_diff_shows_function_differences(
+        self, diff_session_response_1, diff_session_response_2
+    ):
+        """Diff shows function event comparison."""
+        mock_client = MagicMock()
+
+        def mock_get_session(session_id):
+            if session_id == "session-diff-001":
+                return SessionsResponse(**diff_session_response_1)
+            return SessionsResponse(**diff_session_response_2)
+
+        mock_client.get_session.side_effect = mock_get_session
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+
+        with patch("shepherd.cli.sessions.get_api_key", return_value="test_key"):
+            with patch("shepherd.cli.sessions.AIOBSClient", return_value=mock_client):
+                result = runner.invoke(
+                    app, ["sessions", "diff", "session-diff-001", "session-diff-002"]
+                )
+
+        assert result.exit_code == 0
+        assert "Function Events Summary" in result.stdout
+        # Check for function-only-in comparisons
+        assert "process" in result.stdout
+        assert "new_process" in result.stdout
+
+    def test_sessions_diff_shows_system_prompts(
+        self, diff_session_response_1, diff_session_response_2
+    ):
+        """Diff shows system prompt comparison."""
+        mock_client = MagicMock()
+
+        def mock_get_session(session_id):
+            if session_id == "session-diff-001":
+                return SessionsResponse(**diff_session_response_1)
+            return SessionsResponse(**diff_session_response_2)
+
+        mock_client.get_session.side_effect = mock_get_session
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+
+        with patch("shepherd.cli.sessions.get_api_key", return_value="test_key"):
+            with patch("shepherd.cli.sessions.AIOBSClient", return_value=mock_client):
+                result = runner.invoke(
+                    app, ["sessions", "diff", "session-diff-001", "session-diff-002"]
+                )
+
+        assert result.exit_code == 0
+        assert "System Prompts Comparison" in result.stdout
+        # Check system prompt content is shown
+        assert "helpful assistant" in result.stdout or "code review" in result.stdout
+
+    def test_sessions_diff_shows_request_params(
+        self, diff_session_response_1, diff_session_response_2
+    ):
+        """Diff shows request parameter comparison."""
+        mock_client = MagicMock()
+
+        def mock_get_session(session_id):
+            if session_id == "session-diff-001":
+                return SessionsResponse(**diff_session_response_1)
+            return SessionsResponse(**diff_session_response_2)
+
+        mock_client.get_session.side_effect = mock_get_session
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+
+        with patch("shepherd.cli.sessions.get_api_key", return_value="test_key"):
+            with patch("shepherd.cli.sessions.AIOBSClient", return_value=mock_client):
+                result = runner.invoke(
+                    app, ["sessions", "diff", "session-diff-001", "session-diff-002"]
+                )
+
+        assert result.exit_code == 0
+        assert "Request Parameters Summary" in result.stdout
+        assert "Temperature" in result.stdout
+
+    def test_sessions_diff_shows_response_summary(
+        self, diff_session_response_1, diff_session_response_2
+    ):
+        """Diff shows response summary comparison."""
+        mock_client = MagicMock()
+
+        def mock_get_session(session_id):
+            if session_id == "session-diff-001":
+                return SessionsResponse(**diff_session_response_1)
+            return SessionsResponse(**diff_session_response_2)
+
+        mock_client.get_session.side_effect = mock_get_session
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+
+        with patch("shepherd.cli.sessions.get_api_key", return_value="test_key"):
+            with patch("shepherd.cli.sessions.AIOBSClient", return_value=mock_client):
+                result = runner.invoke(
+                    app, ["sessions", "diff", "session-diff-001", "session-diff-002"]
+                )
+
+        assert result.exit_code == 0
+        assert "Response Summary" in result.stdout
+        assert "Response Length" in result.stdout
+
+    def test_sessions_diff_shows_tools_comparison(
+        self, diff_session_response_1, diff_session_response_2
+    ):
+        """Diff shows tools used comparison."""
+        mock_client = MagicMock()
+
+        def mock_get_session(session_id):
+            if session_id == "session-diff-001":
+                return SessionsResponse(**diff_session_response_1)
+            return SessionsResponse(**diff_session_response_2)
+
+        mock_client.get_session.side_effect = mock_get_session
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+
+        with patch("shepherd.cli.sessions.get_api_key", return_value="test_key"):
+            with patch("shepherd.cli.sessions.AIOBSClient", return_value=mock_client):
+                result = runner.invoke(
+                    app, ["sessions", "diff", "session-diff-001", "session-diff-002"]
+                )
+
+        assert result.exit_code == 0
+        assert "Tools Used" in result.stdout
+
+    def test_sessions_diff_json_includes_new_fields(
+        self, diff_session_response_1, diff_session_response_2
+    ):
+        """Diff JSON output includes system prompts, requests, and responses."""
+        mock_client = MagicMock()
+
+        def mock_get_session(session_id):
+            if session_id == "session-diff-001":
+                return SessionsResponse(**diff_session_response_1)
+            return SessionsResponse(**diff_session_response_2)
+
+        mock_client.get_session.side_effect = mock_get_session
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+
+        with patch("shepherd.cli.sessions.get_api_key", return_value="test_key"):
+            with patch("shepherd.cli.sessions.AIOBSClient", return_value=mock_client):
+                result = runner.invoke(
+                    app,
+                    ["sessions", "diff", "session-diff-001", "session-diff-002", "-o", "json"],
+                )
+
+        assert result.exit_code == 0
+        assert '"system_prompts"' in result.stdout
+        assert '"request_params"' in result.stdout
+        assert '"responses"' in result.stdout

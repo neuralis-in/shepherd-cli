@@ -43,6 +43,7 @@ shepherd >
 | `sessions list` | List all sessions |
 | `sessions get <id>` | Get details for a specific session |
 | `sessions search [query]` | Search and filter sessions |
+| `sessions diff <id1> <id2>` | Compare two sessions |
 
 ### Config
 
@@ -107,6 +108,23 @@ shepherd > sessions search --evals-failed
 shepherd > sessions search -p anthropic -l user=alice --evals-failed -n 5
 ```
 
+### Comparing Sessions
+
+```bash
+# Compare two sessions
+shepherd > sessions diff abc123 def456
+
+# Output diff as JSON
+shepherd > sessions diff abc123 def456 -o json
+```
+
+The diff command shows:
+- **Metadata**: Duration, labels changes
+- **LLM Calls**: Token usage, latency, error comparison
+- **System Prompts**: Differences in system prompts used
+- **Request Parameters**: Temperature, max tokens, tools changes
+- **Responses**: Content length, tool calls, stop reasons
+
 ### Slash Syntax
 
 Both syntaxes work identically:
@@ -156,4 +174,6 @@ This installs `prompt_toolkit` for a better interactive experience. Without it, 
 4. **Find problem sessions**: Use `sessions search --has-errors` or `sessions search --evals-failed` to quickly find sessions that need attention.
 
 5. **Filter by environment**: Use labels to filter sessions by environment, e.g., `sessions search -l env=production`.
+
+6. **Compare runs**: Use `sessions diff <baseline> <experiment>` to compare two sessions and see what changed in prompts, parameters, and responses.
 
