@@ -108,4 +108,3 @@ def empty_sessions_response():
         "generated_at": 1733580500.789,
         "version": 1,
     }
-

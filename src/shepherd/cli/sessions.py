@@ -200,12 +200,14 @@ def _print_session_detail(response: SessionsResponse) -> None:
 def list_sessions(
     output: str = typer.Option(
         None,
-        "--output", "-o",
+        "--output",
+        "-o",
         help="Output format: table or json (overrides config)",
     ),
     limit: int = typer.Option(
         None,
-        "--limit", "-n",
+        "--limit",
+        "-n",
         help="Maximum number of sessions to display",
     ),
     ids_only: bool = typer.Option(
@@ -248,7 +250,8 @@ def get_session(
     session_id: str = typer.Argument(..., help="Session ID to fetch"),
     output: str = typer.Option(
         None,
-        "--output", "-o",
+        "--output",
+        "-o",
         help="Output format: table or json (overrides config)",
     ),
 ):
@@ -274,4 +277,3 @@ def get_session(
     except AIOBSError as e:
         console.print(f"[red]Error:[/red] {e}")
         raise typer.Exit(1)
-

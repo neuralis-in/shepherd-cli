@@ -5,8 +5,6 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
-
 from shepherd.config import (
     AIOBSConfig,
     CLIConfig,
@@ -92,9 +90,7 @@ class TestConfigLoadSave:
 
                     # Create and save config
                     config = ShepherdConfig(
-                        providers=ProvidersConfig(
-                            aiobs=AIOBSConfig(api_key="test_api_key_12345")
-                        )
+                        providers=ProvidersConfig(aiobs=AIOBSConfig(api_key="test_api_key_12345"))
                     )
                     save_config(config)
 
@@ -115,9 +111,7 @@ class TestGetApiKey:
             os.environ.pop("AIOBS_API_KEY", None)
             with patch("shepherd.config.load_config") as mock_load:
                 mock_config = ShepherdConfig(
-                    providers=ProvidersConfig(
-                        aiobs=AIOBSConfig(api_key="config_key_456")
-                    )
+                    providers=ProvidersConfig(aiobs=AIOBSConfig(api_key="config_key_456"))
                 )
                 mock_load.return_value = mock_config
                 assert get_api_key() == "config_key_456"
@@ -127,9 +121,7 @@ class TestGetApiKey:
         with patch.dict(os.environ, {"AIOBS_API_KEY": "env_key"}):
             with patch("shepherd.config.load_config") as mock_load:
                 mock_config = ShepherdConfig(
-                    providers=ProvidersConfig(
-                        aiobs=AIOBSConfig(api_key="config_key")
-                    )
+                    providers=ProvidersConfig(aiobs=AIOBSConfig(api_key="config_key"))
                 )
                 mock_load.return_value = mock_config
                 assert get_api_key() == "env_key"
@@ -155,10 +147,7 @@ class TestGetEndpoint:
     def test_custom_endpoint(self):
         with patch("shepherd.config.load_config") as mock_load:
             mock_config = ShepherdConfig(
-                providers=ProvidersConfig(
-                    aiobs=AIOBSConfig(endpoint="https://custom.api.com")
-                )
+                providers=ProvidersConfig(aiobs=AIOBSConfig(endpoint="https://custom.api.com"))
             )
             mock_load.return_value = mock_config
             assert get_endpoint() == "https://custom.api.com"
-

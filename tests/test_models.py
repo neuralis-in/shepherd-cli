@@ -1,7 +1,5 @@
 """Tests for pydantic models."""
 
-import pytest
-
 from shepherd.models import (
     Callsite,
     Event,
@@ -204,4 +202,3 @@ class TestSessionsResponse:
         response = SessionsResponse(**empty_sessions_response)
         assert len(response.sessions) == 0
         assert len(response.events) == 0
-

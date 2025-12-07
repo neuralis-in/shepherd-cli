@@ -1,6 +1,5 @@
 """Tests for AIOBS client."""
 
-import httpx
 import pytest
 
 from shepherd.providers.aiobs import (
@@ -145,6 +144,6 @@ class TestAIOBSClient:
         request = httpx_mock.get_request()
         assert request is not None
         import json
+
         body = json.loads(request.content)
         assert body["api_key"] == "my_secret_key"
-

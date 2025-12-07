@@ -97,9 +97,8 @@ class AIOBSClient:
         """Close the HTTP client."""
         self._client.close()
 
-    def __enter__(self) -> "AIOBSClient":
+    def __enter__(self) -> AIOBSClient:
         return self
 
     def __exit__(self, *args) -> None:
         self.close()
-

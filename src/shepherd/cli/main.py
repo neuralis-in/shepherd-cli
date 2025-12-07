@@ -39,4 +39,3 @@ def main(ctx: typer.Context):
 
 if __name__ == "__main__":
     app()
-

@@ -57,9 +57,7 @@ def init_config():
     # Create and save config
     config = ShepherdConfig(
         default_provider="aiobs",
-        providers=ProvidersConfig(
-            aiobs=AIOBSConfig(api_key=api_key, endpoint=endpoint)
-        ),
+        providers=ProvidersConfig(aiobs=AIOBSConfig(api_key=api_key, endpoint=endpoint)),
     )
     save_config(config)
 
@@ -132,7 +130,9 @@ def set_config(
             raise typer.Exit(1)
     else:
         console.print(f"[red]Unknown key: {key}[/red]")
-        console.print("[dim]Available keys: aiobs.api_key, aiobs.endpoint, cli.output_format, cli.color[/dim]")
+        console.print(
+            "[dim]Available keys: aiobs.api_key, aiobs.endpoint, cli.output_format, cli.color[/dim]"
+        )
         raise typer.Exit(1)
 
     save_config(config)
@@ -168,4 +168,3 @@ def get_config(
         raise typer.Exit(1)
 
     console.print(value)
-

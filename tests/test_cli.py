@@ -1,9 +1,7 @@
 """Tests for CLI commands."""
 
-import json
 from unittest.mock import MagicMock, patch
 
-import pytest
 from typer.testing import CliRunner
 
 from shepherd.cli.main import app
@@ -111,8 +109,7 @@ class TestSessionsListCommand:
     def test_sessions_list_with_limit(self, sample_sessions_response):
         # Add more sessions to test limit
         sample_sessions_response["sessions"] = [
-            sample_sessions_response["sessions"][0].copy()
-            for _ in range(5)
+            sample_sessions_response["sessions"][0].copy() for _ in range(5)
         ]
         for i, session in enumerate(sample_sessions_response["sessions"]):
             session["id"] = f"session-{i}"
@@ -184,4 +181,3 @@ class TestSessionsGetCommand:
 
         assert result.exit_code == 1
         assert "Session not found" in result.stdout
-

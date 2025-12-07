@@ -118,4 +118,3 @@ def get_endpoint() -> str:
     """Get the AIOBS API endpoint."""
     config = load_config()
     return config.providers.aiobs.endpoint
-

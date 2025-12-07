@@ -112,4 +112,3 @@ class SessionsResponse(BaseModel):
     enh_prompt_traces: list[Any] = Field(default_factory=list)
     generated_at: float
     version: int = 1
-
