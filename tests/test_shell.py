@@ -28,6 +28,7 @@ class TestShepherdShellInit:
         ShepherdShell()  # Initialize to populate SHELL_COMMANDS
         assert "sessions list" in SHELL_COMMANDS
         assert "sessions get" in SHELL_COMMANDS
+        assert "sessions search" in SHELL_COMMANDS
         assert "config init" in SHELL_COMMANDS
         assert "config show" in SHELL_COMMANDS
         assert "config set" in SHELL_COMMANDS
@@ -159,6 +160,75 @@ class TestParseArgs:
         kwargs = shell._parse_args("sessions list", ["--limit", "not-a-number"])
         assert "limit" not in kwargs
 
+    def test_parse_search_query_positional(self):
+        shell = ShepherdShell()
+        kwargs = shell._parse_args("sessions search", ["my-query"])
+        assert kwargs == {"query": "my-query"}
+
+    def test_parse_search_label_short(self):
+        shell = ShepherdShell()
+        kwargs = shell._parse_args("sessions search", ["-l", "env=prod"])
+        assert kwargs == {"label": ["env=prod"]}
+
+    def test_parse_search_multiple_labels(self):
+        shell = ShepherdShell()
+        kwargs = shell._parse_args("sessions search", ["-l", "env=prod", "-l", "user=alice"])
+        assert kwargs == {"label": ["env=prod", "user=alice"]}
+
+    def test_parse_search_provider_short(self):
+        shell = ShepherdShell()
+        kwargs = shell._parse_args("sessions search", ["-p", "openai"])
+        assert kwargs == {"provider": "openai"}
+
+    def test_parse_search_model_short(self):
+        shell = ShepherdShell()
+        kwargs = shell._parse_args("sessions search", ["-m", "gpt-4"])
+        assert kwargs == {"model": "gpt-4"}
+
+    def test_parse_search_function_short(self):
+        shell = ShepherdShell()
+        kwargs = shell._parse_args("sessions search", ["-f", "my_func"])
+        assert kwargs == {"function": "my_func"}
+
+    def test_parse_search_has_errors_flag(self):
+        shell = ShepherdShell()
+        kwargs = shell._parse_args("sessions search", ["--has-errors"])
+        assert kwargs == {"has_errors": True}
+
+    def test_parse_search_errors_alias_flag(self):
+        shell = ShepherdShell()
+        kwargs = shell._parse_args("sessions search", ["--errors"])
+        assert kwargs == {"has_errors": True}
+
+    def test_parse_search_evals_failed_flag(self):
+        shell = ShepherdShell()
+        kwargs = shell._parse_args("sessions search", ["--evals-failed"])
+        assert kwargs == {"evals_failed": True}
+
+    def test_parse_search_failed_evals_alias_flag(self):
+        shell = ShepherdShell()
+        kwargs = shell._parse_args("sessions search", ["--failed-evals"])
+        assert kwargs == {"evals_failed": True}
+
+    def test_parse_search_combined_args(self):
+        shell = ShepherdShell()
+        kwargs = shell._parse_args(
+            "sessions search",
+            ["my-query", "-p", "anthropic", "-l", "env=prod", "--has-errors", "-n", "5"],
+        )
+        assert kwargs["query"] == "my-query"
+        assert kwargs["provider"] == "anthropic"
+        assert kwargs["label"] == ["env=prod"]
+        assert kwargs["has_errors"] is True
+        assert kwargs["limit"] == 5
+
+    def test_parse_search_date_filters(self):
+        shell = ShepherdShell()
+        kwargs = shell._parse_args(
+            "sessions search", ["--after", "2025-01-01", "--before", "2025-12-31"]
+        )
+        assert kwargs == {"after": "2025-01-01", "before": "2025-12-31"}
+
 
 class TestExecuteCommand:
     """Tests for _execute_command method."""
@@ -257,6 +327,63 @@ class TestSessionsCommands:
         assert result is True
         mock_client.get_session.assert_called_once_with("session-123")
 
+    def test_sessions_search_in_shell(self, search_sessions_response):
+        shell = ShepherdShell()
+        mock_client = MagicMock()
+        mock_client.list_sessions.return_value = SessionsResponse(**search_sessions_response)
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+
+        with patch("shepherd.cli.sessions.get_api_key", return_value="test_key"):
+            with patch("shepherd.cli.sessions.AIOBSClient", return_value=mock_client):
+                result = shell._execute_command("sessions search", [])
+
+        assert result is True
+        mock_client.list_sessions.assert_called_once()
+
+    def test_sessions_search_with_query_in_shell(self, search_sessions_response):
+        shell = ShepherdShell()
+        mock_client = MagicMock()
+        mock_client.list_sessions.return_value = SessionsResponse(**search_sessions_response)
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+
+        with patch("shepherd.cli.sessions.get_api_key", return_value="test_key"):
+            with patch("shepherd.cli.sessions.AIOBSClient", return_value=mock_client):
+                result = shell._execute_command("sessions search", ["production"])
+
+        assert result is True
+
+    def test_sessions_search_with_filters_in_shell(self, search_sessions_response):
+        shell = ShepherdShell()
+        mock_client = MagicMock()
+        mock_client.list_sessions.return_value = SessionsResponse(**search_sessions_response)
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+
+        with patch("shepherd.cli.sessions.get_api_key", return_value="test_key"):
+            with patch("shepherd.cli.sessions.AIOBSClient", return_value=mock_client):
+                result = shell._execute_command(
+                    "sessions search", ["-p", "anthropic", "-l", "env=production", "--has-errors"]
+                )
+
+        assert result is True
+
+    def test_sessions_search_with_evals_failed_in_shell(self, search_sessions_with_failed_evals):
+        shell = ShepherdShell()
+        mock_client = MagicMock()
+        mock_client.list_sessions.return_value = SessionsResponse(
+            **search_sessions_with_failed_evals
+        )
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+
+        with patch("shepherd.cli.sessions.get_api_key", return_value="test_key"):
+            with patch("shepherd.cli.sessions.AIOBSClient", return_value=mock_client):
+                result = shell._execute_command("sessions search", ["--evals-failed"])
+
+        assert result is True
+
 
 class TestConfigCommands:
     """Tests for config commands in shell."""
@@ -303,6 +430,7 @@ class TestPrintHelp:
         output_str = output.getvalue()
         assert "sessions list" in output_str
         assert "sessions get" in output_str
+        assert "sessions search" in output_str
         assert "config init" in output_str
         assert "help" in output_str
         assert "exit" in output_str

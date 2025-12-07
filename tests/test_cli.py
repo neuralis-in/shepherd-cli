@@ -35,6 +35,7 @@ class TestHelpCommand:
         assert result.exit_code == 0
         assert "list" in result.stdout
         assert "get" in result.stdout
+        assert "search" in result.stdout
 
     def test_config_help(self):
         result = runner.invoke(app, ["config", "--help"])
@@ -181,3 +182,267 @@ class TestSessionsGetCommand:
 
         assert result.exit_code == 1
         assert "Session not found" in result.stdout
+
+
+class TestSessionsSearchCommand:
+    """Tests for sessions search command."""
+
+    def test_sessions_search_no_api_key(self):
+        with patch("shepherd.cli.sessions.get_api_key", return_value=None):
+            result = runner.invoke(app, ["sessions", "search"])
+            assert result.exit_code == 1
+            assert "No API key configured" in result.stdout
+
+    def test_sessions_search_no_filters(self, search_sessions_response):
+        """Search with no filters returns all sessions."""
+        mock_client = MagicMock()
+        mock_client.list_sessions.return_value = SessionsResponse(**search_sessions_response)
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+
+        with patch("shepherd.cli.sessions.get_api_key", return_value="test_key"):
+            with patch("shepherd.cli.sessions.AIOBSClient", return_value=mock_client):
+                result = runner.invoke(app, ["sessions", "search"])
+
+        assert result.exit_code == 0
+        # Check for truncated names (table truncates long names)
+        assert "prod-ses" in result.stdout
+        assert "dev-sess" in result.stdout
+
+    def test_sessions_search_by_query(self, search_sessions_response):
+        """Search by text query matches session name."""
+        mock_client = MagicMock()
+        mock_client.list_sessions.return_value = SessionsResponse(**search_sessions_response)
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+
+        with patch("shepherd.cli.sessions.get_api_key", return_value="test_key"):
+            with patch("shepherd.cli.sessions.AIOBSClient", return_value=mock_client):
+                result = runner.invoke(app, ["sessions", "search", "production"])
+
+        assert result.exit_code == 0
+        assert "prod-ses" in result.stdout
+        # dev-agent should be filtered out
+        assert "dev-sess" not in result.stdout
+
+    def test_sessions_search_by_label(self, search_sessions_response):
+        """Search by label filters correctly."""
+        mock_client = MagicMock()
+        mock_client.list_sessions.return_value = SessionsResponse(**search_sessions_response)
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+
+        with patch("shepherd.cli.sessions.get_api_key", return_value="test_key"):
+            with patch("shepherd.cli.sessions.AIOBSClient", return_value=mock_client):
+                result = runner.invoke(app, ["sessions", "search", "-l", "env=production"])
+
+        assert result.exit_code == 0
+        assert "prod-ses" in result.stdout
+        assert "dev-sess" not in result.stdout
+
+    def test_sessions_search_by_multiple_labels(self, search_sessions_response):
+        """Search by multiple labels."""
+        mock_client = MagicMock()
+        mock_client.list_sessions.return_value = SessionsResponse(**search_sessions_response)
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+
+        with patch("shepherd.cli.sessions.get_api_key", return_value="test_key"):
+            with patch("shepherd.cli.sessions.AIOBSClient", return_value=mock_client):
+                result = runner.invoke(
+                    app, ["sessions", "search", "-l", "env=production", "-l", "user=alice"]
+                )
+
+        assert result.exit_code == 0
+        assert "prod-ses" in result.stdout
+
+    def test_sessions_search_by_provider(self, search_sessions_response):
+        """Search by provider filters correctly."""
+        mock_client = MagicMock()
+        mock_client.list_sessions.return_value = SessionsResponse(**search_sessions_response)
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+
+        with patch("shepherd.cli.sessions.get_api_key", return_value="test_key"):
+            with patch("shepherd.cli.sessions.AIOBSClient", return_value=mock_client):
+                result = runner.invoke(app, ["sessions", "search", "-p", "anthropic"])
+
+        assert result.exit_code == 0
+        assert "prod-ses" in result.stdout
+        assert "dev-sess" not in result.stdout
+
+    def test_sessions_search_by_model(self, search_sessions_response):
+        """Search by model filters correctly."""
+        mock_client = MagicMock()
+        mock_client.list_sessions.return_value = SessionsResponse(**search_sessions_response)
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+
+        with patch("shepherd.cli.sessions.get_api_key", return_value="test_key"):
+            with patch("shepherd.cli.sessions.AIOBSClient", return_value=mock_client):
+                result = runner.invoke(app, ["sessions", "search", "-m", "claude-3"])
+
+        assert result.exit_code == 0
+        assert "prod-ses" in result.stdout
+
+    def test_sessions_search_by_function(self, search_sessions_response):
+        """Search by function name filters correctly."""
+        mock_client = MagicMock()
+        mock_client.list_sessions.return_value = SessionsResponse(**search_sessions_response)
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+
+        with patch("shepherd.cli.sessions.get_api_key", return_value="test_key"):
+            with patch("shepherd.cli.sessions.AIOBSClient", return_value=mock_client):
+                result = runner.invoke(app, ["sessions", "search", "-f", "process_data"])
+
+        assert result.exit_code == 0
+        assert "prod-ses" in result.stdout
+
+    def test_sessions_search_has_errors(self, search_sessions_response):
+        """Search for sessions with errors."""
+        mock_client = MagicMock()
+        mock_client.list_sessions.return_value = SessionsResponse(**search_sessions_response)
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+
+        with patch("shepherd.cli.sessions.get_api_key", return_value="test_key"):
+            with patch("shepherd.cli.sessions.AIOBSClient", return_value=mock_client):
+                result = runner.invoke(app, ["sessions", "search", "--has-errors"])
+
+        assert result.exit_code == 0
+        assert "dev-agent" in result.stdout
+        assert "production-agent" not in result.stdout
+
+    def test_sessions_search_evals_failed(self, search_sessions_with_failed_evals):
+        """Search for sessions with failed evaluations."""
+        mock_client = MagicMock()
+        mock_client.list_sessions.return_value = SessionsResponse(
+            **search_sessions_with_failed_evals
+        )
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+
+        with patch("shepherd.cli.sessions.get_api_key", return_value="test_key"):
+            with patch("shepherd.cli.sessions.AIOBSClient", return_value=mock_client):
+                result = runner.invoke(app, ["sessions", "search", "--evals-failed"])
+
+        assert result.exit_code == 0
+        assert "prod-ses" in result.stdout
+
+    def test_sessions_search_by_date_after(self, search_sessions_response):
+        """Search for sessions after a date."""
+        mock_client = MagicMock()
+        mock_client.list_sessions.return_value = SessionsResponse(**search_sessions_response)
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+
+        with patch("shepherd.cli.sessions.get_api_key", return_value="test_key"):
+            with patch("shepherd.cli.sessions.AIOBSClient", return_value=mock_client):
+                # dev-session has earlier date (1733490000 = 2024-12-06)
+                # prod-session has later date (1733580000 = 2024-12-07)
+                result = runner.invoke(app, ["sessions", "search", "--after", "2024-12-07"])
+
+        assert result.exit_code == 0
+        assert "prod-ses" in result.stdout
+        assert "dev-sess" not in result.stdout
+
+    def test_sessions_search_combined_filters(self, search_sessions_response):
+        """Search with combined filters."""
+        mock_client = MagicMock()
+        mock_client.list_sessions.return_value = SessionsResponse(**search_sessions_response)
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+
+        with patch("shepherd.cli.sessions.get_api_key", return_value="test_key"):
+            with patch("shepherd.cli.sessions.AIOBSClient", return_value=mock_client):
+                result = runner.invoke(
+                    app, ["sessions", "search", "-p", "anthropic", "-l", "env=production"]
+                )
+
+        assert result.exit_code == 0
+        assert "prod-ses" in result.stdout
+
+    def test_sessions_search_json_output(self, search_sessions_response):
+        """Search with JSON output format."""
+        mock_client = MagicMock()
+        mock_client.list_sessions.return_value = SessionsResponse(**search_sessions_response)
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+
+        with patch("shepherd.cli.sessions.get_api_key", return_value="test_key"):
+            with patch("shepherd.cli.sessions.AIOBSClient", return_value=mock_client):
+                result = runner.invoke(app, ["sessions", "search", "-o", "json"])
+
+        assert result.exit_code == 0
+        assert "sessions" in result.stdout
+
+    def test_sessions_search_ids_only(self, search_sessions_response):
+        """Search with IDs only output."""
+        mock_client = MagicMock()
+        mock_client.list_sessions.return_value = SessionsResponse(**search_sessions_response)
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+
+        with patch("shepherd.cli.sessions.get_api_key", return_value="test_key"):
+            with patch("shepherd.cli.sessions.AIOBSClient", return_value=mock_client):
+                result = runner.invoke(app, ["sessions", "search", "--ids"])
+
+        assert result.exit_code == 0
+        assert "prod-session-001" in result.stdout
+        assert "dev-session-002" in result.stdout
+        # Should not contain table elements
+        assert "Search Results" not in result.stdout
+
+    def test_sessions_search_with_limit(self, search_sessions_response):
+        """Search with limit option."""
+        mock_client = MagicMock()
+        mock_client.list_sessions.return_value = SessionsResponse(**search_sessions_response)
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+
+        with patch("shepherd.cli.sessions.get_api_key", return_value="test_key"):
+            with patch("shepherd.cli.sessions.AIOBSClient", return_value=mock_client):
+                result = runner.invoke(app, ["sessions", "search", "-n", "1"])
+
+        assert result.exit_code == 0
+
+    def test_sessions_search_no_results(self, search_sessions_response):
+        """Search returns no results."""
+        mock_client = MagicMock()
+        mock_client.list_sessions.return_value = SessionsResponse(**search_sessions_response)
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+
+        with patch("shepherd.cli.sessions.get_api_key", return_value="test_key"):
+            with patch("shepherd.cli.sessions.AIOBSClient", return_value=mock_client):
+                result = runner.invoke(app, ["sessions", "search", "nonexistent-query"])
+
+        assert result.exit_code == 0
+        assert "No sessions match" in result.stdout
+
+    def test_sessions_search_invalid_label_format(self):
+        """Search with invalid label format shows error."""
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+
+        with patch("shepherd.cli.sessions.get_api_key", return_value="test_key"):
+            with patch("shepherd.cli.sessions.AIOBSClient", return_value=mock_client):
+                result = runner.invoke(app, ["sessions", "search", "-l", "invalid"])
+
+        assert result.exit_code != 0
+        assert "Invalid label format" in result.output
+
+    def test_sessions_search_invalid_date_format(self):
+        """Search with invalid date format shows error."""
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+
+        with patch("shepherd.cli.sessions.get_api_key", return_value="test_key"):
+            with patch("shepherd.cli.sessions.AIOBSClient", return_value=mock_client):
+                result = runner.invoke(app, ["sessions", "search", "--after", "not-a-date"])
+
+        assert result.exit_code != 0
+        assert "Invalid date format" in result.output

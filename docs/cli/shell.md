@@ -42,6 +42,7 @@ shepherd >
 |---------|-------------|
 | `sessions list` | List all sessions |
 | `sessions get <id>` | Get details for a specific session |
+| `sessions search [query]` | Search and filter sessions |
 
 ### Config
 
@@ -83,6 +84,27 @@ shepherd > sessions list --limit 5
 shepherd > sessions list -o json
 shepherd > sessions list --ids
 shepherd > sessions get abc123 -o json
+```
+
+### Searching Sessions
+
+```bash
+# Text search
+shepherd > sessions search "my-agent"
+
+# Filter by label
+shepherd > sessions search --label env=production
+shepherd > sessions search -l env=prod -l user=alice
+
+# Filter by provider and model
+shepherd > sessions search -p openai -m gpt-4
+
+# Date and error filters
+shepherd > sessions search --after 2025-12-01 --has-errors
+shepherd > sessions search --evals-failed
+
+# Combined filters
+shepherd > sessions search -p anthropic -l user=alice --evals-failed -n 5
 ```
 
 ### Slash Syntax
@@ -130,4 +152,8 @@ This installs `prompt_toolkit` for a better interactive experience. Without it, 
 2. **JSON for scripting**: While in the shell, use `-o json` for machine-readable output you can copy.
 
 3. **Clear clutter**: Use `clear` to reset the screen between commands.
+
+4. **Find problem sessions**: Use `sessions search --has-errors` or `sessions search --evals-failed` to quickly find sessions that need attention.
+
+5. **Filter by environment**: Use labels to filter sessions by environment, e.g., `sessions search -l env=production`.
 

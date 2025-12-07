@@ -67,6 +67,21 @@ shepherd sessions list --ids    # List only session IDs (for scripting)
 
 shepherd sessions get <id>      # Get session details with trace tree
 shepherd sessions get <id> -o json  # Output as JSON
+
+# Search and filter sessions
+shepherd sessions search "query"              # Search by name, ID, labels, or metadata
+shepherd sessions search --label env=prod     # Filter by label
+shepherd sessions search --provider openai    # Filter by provider
+shepherd sessions search --model gpt-4        # Filter by model
+shepherd sessions search --function my_func   # Filter by function name
+shepherd sessions search --after 2025-12-01   # Sessions after date
+shepherd sessions search --before 2025-12-07  # Sessions before date
+shepherd sessions search --has-errors         # Only sessions with errors
+shepherd sessions search --evals-failed       # Only sessions with failed evaluations
+
+# Combine filters
+shepherd sessions search --provider anthropic --label user=alice --after 2025-12-01
+shepherd sessions search "agent" --model claude-3 --evals-failed -n 5
 ```
 
 ### Shell

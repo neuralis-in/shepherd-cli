@@ -41,7 +41,7 @@ class ShepherdShell:
         """Set up built-in shell commands."""
         # Import here to avoid circular imports
         from shepherd.cli.config import get_config, init_config, set_config, show_config
-        from shepherd.cli.sessions import get_session, list_sessions
+        from shepherd.cli.sessions import get_session, list_sessions, search_sessions
 
         # Sessions commands - pass explicit defaults since typer.Option() returns objects
         def _list_sessions(output=None, limit=None, ids_only=False):
@@ -50,8 +50,38 @@ class ShepherdShell:
         def _get_session(session_id, output=None):
             get_session(session_id=session_id, output=output)
 
+        def _search_sessions(
+            query=None,
+            label=None,
+            provider=None,
+            model=None,
+            function=None,
+            after=None,
+            before=None,
+            has_errors=False,
+            evals_failed=False,
+            output=None,
+            limit=None,
+            ids_only=False,
+        ):
+            search_sessions(
+                query=query,
+                label=label,
+                provider=provider,
+                model=model,
+                function=function,
+                after=after,
+                before=before,
+                has_errors=has_errors,
+                evals_failed=evals_failed,
+                output=output,
+                limit=limit,
+                ids_only=ids_only,
+            )
+
         SHELL_COMMANDS["sessions list"] = (_list_sessions, "List all sessions")
         SHELL_COMMANDS["sessions get"] = (_get_session, "Get details for a specific session")
+        SHELL_COMMANDS["sessions search"] = (_search_sessions, "Search and filter sessions")
 
         # Config commands
         def _config_init():
@@ -97,7 +127,7 @@ class ShepherdShell:
 
         # Group commands
         groups = {
-            "Sessions": ["sessions list", "sessions get"],
+            "Sessions": ["sessions list", "sessions get", "sessions search"],
             "Config": ["config init", "config show", "config set", "config get"],
             "Shell": ["help", "clear", "version", "exit", "quit"],
         }
@@ -194,14 +224,24 @@ class ShepherdShell:
         """Parse command arguments into kwargs."""
         kwargs: dict = {}
         positional: list[str] = []
+        labels: list[str] = []  # Collect multiple --label flags
         i = 0
 
         while i < len(args):
             arg = args[i]
             if arg.startswith("--"):
                 key = arg[2:].replace("-", "_")
-                if i + 1 < len(args) and not args[i + 1].startswith("-"):
-                    kwargs[key] = args[i + 1]
+                # Handle boolean flags (no value expected)
+                bool_flags = {"ids", "has_errors", "errors", "evals_failed", "failed_evals"}
+                if key in bool_flags:
+                    kwargs[key] = True
+                    i += 1
+                elif i + 1 < len(args) and not args[i + 1].startswith("-"):
+                    # Handle --label specially - can be specified multiple times
+                    if key == "label":
+                        labels.append(args[i + 1])
+                    else:
+                        kwargs[key] = args[i + 1]
                     i += 2
                 else:
                     kwargs[key] = True
@@ -210,10 +250,21 @@ class ShepherdShell:
                 # Short flags
                 key = arg[1:]
                 # Map common short flags
-                flag_map = {"o": "output", "n": "limit"}
+                flag_map = {
+                    "o": "output",
+                    "n": "limit",
+                    "l": "label",
+                    "p": "provider",
+                    "m": "model",
+                    "f": "function",
+                }
                 key = flag_map.get(key, key)
                 if i + 1 < len(args) and not args[i + 1].startswith("-"):
-                    kwargs[key] = args[i + 1]
+                    # Handle -l specially - can be specified multiple times
+                    if key == "label":
+                        labels.append(args[i + 1])
+                    else:
+                        kwargs[key] = args[i + 1]
                     i += 2
                 else:
                     kwargs[key] = True
@@ -222,9 +273,15 @@ class ShepherdShell:
                 positional.append(arg)
                 i += 1
 
+        # Add collected labels if any
+        if labels:
+            kwargs["label"] = labels
+
         # Handle positional arguments based on command
         if cmd == "sessions get" and positional:
             kwargs["session_id"] = positional[0]
+        elif cmd == "sessions search" and positional:
+            kwargs["query"] = positional[0]
         elif cmd == "config set" and len(positional) >= 2:
             kwargs["key"] = positional[0]
             kwargs["value"] = positional[1]
@@ -245,6 +302,10 @@ class ShepherdShell:
         # Handle boolean flags
         if "ids" in kwargs:
             kwargs["ids_only"] = bool(kwargs.pop("ids"))
+        if "errors" in kwargs:
+            kwargs["has_errors"] = bool(kwargs.pop("errors"))
+        if "failed_evals" in kwargs:
+            kwargs["evals_failed"] = bool(kwargs.pop("failed_evals"))
 
         return kwargs
 
