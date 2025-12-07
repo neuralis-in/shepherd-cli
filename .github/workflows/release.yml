@@ -18,9 +18,32 @@ permissions:
   id-token: write
 
 jobs:
+  # Gate: Only repository admins can run this workflow
+  authorize:
+    name: Authorize
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check if user is admin
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: permissionLevel } = await github.rest.repos.getCollaboratorPermissionLevel({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              username: context.actor
+            });
+            
+            const permission = permissionLevel.permission;
+            console.log(`User ${context.actor} has permission level: ${permission}`);
+            
+            if (permission !== 'admin') {
+              core.setFailed(`User ${context.actor} is not an admin. Only admins can trigger releases.`);
+            }
+
   validate:
     name: Validate
     runs-on: ubuntu-latest
+    needs: authorize
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
