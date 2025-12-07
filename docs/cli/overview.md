@@ -19,6 +19,7 @@ shepherd [OPTIONS] COMMAND [ARGS]
 | Command | Description |
 |---------|-------------|
 | `version` | Show version information |
+| `shell` | Start interactive shell |
 | `config` | Manage configuration |
 | `sessions` | List and inspect sessions |
 

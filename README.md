@@ -8,6 +8,12 @@ Debug your AI agents like you debug your code.
 pip install shepherd-cli
 ```
 
+For enhanced shell experience (tab completion, history):
+
+```bash
+pip install shepherd-cli[shell]
+```
+
 ## Quick Start
 
 ### 1. Configure your API key
@@ -34,6 +40,12 @@ shepherd sessions list
 shepherd sessions get <session-id>
 ```
 
+### 4. Interactive shell
+
+```bash
+shepherd shell
+```
+
 ## Commands
 
 ### Config
@@ -56,6 +68,27 @@ shepherd sessions list --ids    # List only session IDs (for scripting)
 shepherd sessions get <id>      # Get session details with trace tree
 shepherd sessions get <id> -o json  # Output as JSON
 ```
+
+### Shell
+
+```bash
+shepherd shell                  # Start interactive shell
+```
+
+Inside the shell:
+```
+shepherd > sessions list
+shepherd > sessions get <id>
+shepherd > config show
+shepherd > help
+shepherd > exit
+```
+
+Features:
+- Tab completion
+- Command history (persisted)
+- Auto-suggestions
+- `/command` or `command` syntax
 
 ## Configuration
 

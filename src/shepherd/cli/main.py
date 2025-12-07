@@ -8,6 +8,7 @@ from rich.console import Console
 from shepherd import __version__
 from shepherd.cli.config import app as config_app
 from shepherd.cli.sessions import app as sessions_app
+from shepherd.cli.shell import start_shell
 
 # Create main app
 app = typer.Typer(
@@ -28,6 +29,12 @@ console = Console()
 def version():
     """Show version information."""
     console.print(f"[bold green]shepherd[/bold green] v{__version__}")
+
+
+@app.command()
+def shell():
+    """Start an interactive Shepherd shell."""
+    start_shell()
 
 
 @app.callback(invoke_without_command=True)

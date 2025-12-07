@@ -34,6 +34,10 @@ Export traces for analysis or integration with other tools.
 Works with any LLM provider. Currently supports AIOBS.
 :::
 
+:::{grid-item-card} 💻 Interactive Shell
+A REPL for exploring sessions with tab completion and history.
+:::
+
 ::::
 
 ---
@@ -61,8 +65,8 @@ $ shepherd sessions list
 ::::{grid} 2
 :gutter: 3
 
-:::{grid-item-card} 💻 Interactive Shell
-A REPL for exploring sessions with natural language queries.
+:::{grid-item-card} 🤖 Shepherd Agent
+AI-powered debugging with natural language queries and GDB-like features.
 :::
 
 :::{grid-item-card} 🔄 Deterministic Replay
@@ -90,6 +94,7 @@ getting-started/installation
 getting-started/configuration
 getting-started/quickstart
 cli/overview
+cli/shell
 cli/config
 cli/sessions
 concepts/sessions

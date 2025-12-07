@@ -31,6 +31,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+shell = [
+    "prompt_toolkit>=3.0.0",
+]
 dev = [
     "pytest>=8.0.0",
     "pytest-httpx>=0.30.0",
