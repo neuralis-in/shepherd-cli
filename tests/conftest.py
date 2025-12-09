@@ -464,3 +464,121 @@ def diff_session_response_2():
         "generated_at": 1733590500.789,
         "version": 1,
     }
+
+
+# ============================================================================
+# Langfuse Fixtures
+# ============================================================================
+
+SAMPLE_LANGFUSE_OBSERVATION = {
+    "id": "obs-001",
+    "traceId": "trace-001",
+    "type": "GENERATION",
+    "name": "chat-completion",
+    "startTime": "2025-12-09T14:00:00.000Z",
+    "endTime": "2025-12-09T14:00:02.500Z",
+    "model": "gpt-4o-mini",
+    "modelParameters": {"temperature": 0.7, "max_tokens": 1000},
+    "input": [
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": "Hello!"},
+    ],
+    "output": {"role": "assistant", "content": "Hello! How can I help you today?"},
+    "usage": {"input": 50, "output": 20, "total": 70},
+    "level": "DEFAULT",
+    "latency": 2.5,
+    "calculatedInputCost": 0.00005,
+    "calculatedOutputCost": 0.00002,
+    "calculatedTotalCost": 0.00007,
+}
+
+SAMPLE_LANGFUSE_SPAN = {
+    "id": "obs-002",
+    "traceId": "trace-001",
+    "type": "SPAN",
+    "name": "process-request",
+    "startTime": "2025-12-09T13:59:59.000Z",
+    "endTime": "2025-12-09T14:00:03.000Z",
+    "latency": 4.0,
+}
+
+SAMPLE_LANGFUSE_TRACE = {
+    "id": "trace-001",
+    "timestamp": "2025-12-09T13:59:59.000Z",
+    "name": "pipeline",
+    "userId": "user-123",
+    "sessionId": "session-abc",
+    "tags": ["production", "v2"],
+    "latency": 4.0,
+    "totalCost": 0.00007,
+    "observations": ["obs-001", "obs-002"],  # IDs when listing
+}
+
+SAMPLE_LANGFUSE_TRACE_DETAIL = {
+    "id": "trace-001",
+    "timestamp": "2025-12-09T13:59:59.000Z",
+    "name": "pipeline",
+    "userId": "user-123",
+    "sessionId": "session-abc",
+    "tags": ["production", "v2"],
+    "latency": 4.0,
+    "totalCost": 0.00007,
+    "observations": [SAMPLE_LANGFUSE_OBSERVATION, SAMPLE_LANGFUSE_SPAN],  # Full objects when getting
+}
+
+SAMPLE_LANGFUSE_SESSION = {
+    "id": "session-abc",
+    "createdAt": "2025-12-09T10:00:00.000Z",
+    "projectId": "project-xyz",
+    "userIds": ["user-123"],
+    "countTraces": 5,
+    "sessionDuration": 300.0,
+    "inputCost": 0.001,
+    "outputCost": 0.0005,
+    "totalCost": 0.0015,
+    "inputTokens": 500,
+    "outputTokens": 200,
+    "totalTokens": 700,
+}
+
+
+@pytest.fixture
+def sample_langfuse_traces_response():
+    """Return a sample Langfuse traces API response."""
+    return {
+        "data": [SAMPLE_LANGFUSE_TRACE],
+        "meta": {"page": 1, "limit": 50, "totalItems": 1, "totalPages": 1},
+    }
+
+
+@pytest.fixture
+def sample_langfuse_trace_detail():
+    """Return a sample Langfuse trace detail with full observations."""
+    return SAMPLE_LANGFUSE_TRACE_DETAIL
+
+
+@pytest.fixture
+def sample_langfuse_sessions_response():
+    """Return a sample Langfuse sessions API response."""
+    return {
+        "data": [SAMPLE_LANGFUSE_SESSION],
+        "meta": {"page": 1, "limit": 50, "totalItems": 1, "totalPages": 1},
+    }
+
+
+@pytest.fixture
+def empty_langfuse_traces_response():
+    """Return an empty Langfuse traces response."""
+    return {
+        "data": [],
+        "meta": {"page": 1, "limit": 50, "totalItems": 0, "totalPages": 0},
+    }
+
+
+@pytest.fixture
+def empty_langfuse_sessions_response():
+    """Return an empty Langfuse sessions response."""
+    return {
+        "data": [],
+        "meta": {"page": 1, "limit": 50, "totalItems": 0, "totalPages": 0},
+    }

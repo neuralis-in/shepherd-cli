@@ -24,10 +24,19 @@ class AIOBSConfig(BaseModel):
     endpoint: str = "https://shepherd-api-48963996968.us-central1.run.app"
 
 
+class LangfuseConfig(BaseModel):
+    """Langfuse provider configuration."""
+
+    public_key: str = ""
+    secret_key: str = ""
+    host: str = "https://cloud.langfuse.com"
+
+
 class ProvidersConfig(BaseModel):
     """All provider configurations."""
 
     aiobs: AIOBSConfig = Field(default_factory=AIOBSConfig)
+    langfuse: LangfuseConfig = Field(default_factory=LangfuseConfig)
 
 
 class CLIConfig(BaseModel):
@@ -118,3 +127,39 @@ def get_endpoint() -> str:
     """Get the AIOBS API endpoint."""
     config = load_config()
     return config.providers.aiobs.endpoint
+
+
+# Langfuse configuration helpers
+def get_langfuse_public_key() -> str | None:
+    """Get Langfuse public key from config or environment."""
+    # Environment variable takes precedence
+    env_key = os.environ.get("LANGFUSE_PUBLIC_KEY")
+    if env_key:
+        return env_key
+
+    config = load_config()
+    public_key = config.providers.langfuse.public_key
+    return public_key if public_key else None
+
+
+def get_langfuse_secret_key() -> str | None:
+    """Get Langfuse secret key from config or environment."""
+    # Environment variable takes precedence
+    env_key = os.environ.get("LANGFUSE_SECRET_KEY")
+    if env_key:
+        return env_key
+
+    config = load_config()
+    secret_key = config.providers.langfuse.secret_key
+    return secret_key if secret_key else None
+
+
+def get_langfuse_host() -> str:
+    """Get the Langfuse host URL."""
+    # Environment variable takes precedence
+    env_host = os.environ.get("LANGFUSE_HOST")
+    if env_host:
+        return env_host
+
+    config = load_config()
+    return config.providers.langfuse.host

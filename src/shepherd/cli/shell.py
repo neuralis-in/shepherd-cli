@@ -47,15 +47,21 @@ class ShepherdShell:
             list_sessions,
             search_sessions,
         )
+        from shepherd.cli.langfuse import (
+            list_traces,
+            get_trace,
+            list_sessions as lf_list_sessions,
+            get_session as lf_get_session,
+        )
 
-        # Sessions commands - pass explicit defaults since typer.Option() returns objects
-        def _list_sessions(output=None, limit=None, ids_only=False):
+        # AIOBS Sessions commands - pass explicit defaults since typer.Option() returns objects
+        def _aiobs_list_sessions(output=None, limit=None, ids_only=False):
             list_sessions(output=output, limit=limit, ids_only=ids_only)
 
-        def _get_session(session_id, output=None):
+        def _aiobs_get_session(session_id, output=None):
             get_session(session_id=session_id, output=output)
 
-        def _search_sessions(
+        def _aiobs_search_sessions(
             query=None,
             label=None,
             provider=None,
@@ -84,17 +90,90 @@ class ShepherdShell:
                 ids_only=ids_only,
             )
 
-        def _diff_sessions(session_id1, session_id2, output=None):
+        def _aiobs_diff_sessions(session_id1, session_id2, output=None):
             diff_sessions(session_id1=session_id1, session_id2=session_id2, output=output)
 
-        SHELL_COMMANDS["sessions list"] = (_list_sessions, "List all sessions")
-        SHELL_COMMANDS["sessions get"] = (_get_session, "Get details for a specific session")
-        SHELL_COMMANDS["sessions search"] = (_search_sessions, "Search and filter sessions")
-        SHELL_COMMANDS["sessions diff"] = (_diff_sessions, "Compare two sessions")
+        # Explicit AIOBS commands (always available)
+        SHELL_COMMANDS["aiobs sessions list"] = (_aiobs_list_sessions, "List all sessions")
+        SHELL_COMMANDS["aiobs sessions get"] = (_aiobs_get_session, "Get session details")
+        SHELL_COMMANDS["aiobs sessions search"] = (_aiobs_search_sessions, "Search sessions")
+        SHELL_COMMANDS["aiobs sessions diff"] = (_aiobs_diff_sessions, "Compare two sessions")
+
+        # Langfuse Traces commands
+        def _lf_list_traces(
+            output=None,
+            limit=50,
+            page=1,
+            name=None,
+            user_id=None,
+            session_id=None,
+            tags=None,
+            from_timestamp=None,
+            to_timestamp=None,
+            ids_only=False,
+        ):
+            list_traces(
+                output=output,
+                limit=limit,
+                page=page,
+                name=name,
+                user_id=user_id,
+                session_id=session_id,
+                tags=tags,
+                from_timestamp=from_timestamp,
+                to_timestamp=to_timestamp,
+                ids_only=ids_only,
+            )
+
+        def _lf_get_trace(trace_id, output=None):
+            get_trace(trace_id=trace_id, output=output)
+
+        # Langfuse sessions commands
+        def _lf_list_sessions(
+            output=None,
+            limit=50,
+            page=1,
+            from_timestamp=None,
+            to_timestamp=None,
+            ids_only=False,
+        ):
+            lf_list_sessions(
+                output=output,
+                limit=limit,
+                page=page,
+                from_timestamp=from_timestamp,
+                to_timestamp=to_timestamp,
+                ids_only=ids_only,
+            )
+
+        def _lf_get_session(session_id, output=None):
+            lf_get_session(session_id=session_id, output=output)
+
+        # Explicit Langfuse commands (always available)
+        SHELL_COMMANDS["langfuse sessions list"] = (_lf_list_sessions, "List sessions")
+        SHELL_COMMANDS["langfuse sessions get"] = (_lf_get_session, "Get session details")
+        SHELL_COMMANDS["langfuse traces list"] = (_lf_list_traces, "List traces")
+        SHELL_COMMANDS["langfuse traces get"] = (_lf_get_trace, "Get trace details")
+
+        # Store provider-specific command mappings for dynamic routing
+        self._provider_commands = {
+            "langfuse": {
+                "traces list": (_lf_list_traces, "List traces"),
+                "traces get": (_lf_get_trace, "Get trace details"),
+                "sessions list": (_lf_list_sessions, "List sessions"),
+                "sessions get": (_lf_get_session, "Get session details"),
+            },
+            "aiobs": {
+                "sessions list": (_aiobs_list_sessions, "List all sessions"),
+                "sessions get": (_aiobs_get_session, "Get session details"),
+                "sessions search": (_aiobs_search_sessions, "Search sessions"),
+                "sessions diff": (_aiobs_diff_sessions, "Compare two sessions"),
+            },
+        }
 
         # Config commands
-        def _config_init():
-            init_config()
+        def _config_init(provider=None):
+            init_config(provider=provider)
 
         def _config_show():
             show_config()
@@ -111,16 +190,30 @@ class ShepherdShell:
         SHELL_COMMANDS["config get"] = (_config_get, "Get a configuration value")
 
     def _get_prompt(self) -> str:
-        """Get the shell prompt."""
-        return "[bold cyan]shepherd[/bold cyan] [dim]>[/dim] "
+        """Get the shell prompt with provider indicator."""
+        from shepherd.config import load_config
+        config = load_config()
+        provider = config.default_provider
+        provider_color = "magenta" if provider == "langfuse" else "yellow"
+        return f"[bold cyan]shepherd[/bold cyan] [{provider_color}]({provider})[/{provider_color}] [dim]>[/dim] "
 
     def _print_welcome(self):
         """Print welcome message."""
+        from shepherd.config import load_config
+        config = load_config()
+        provider = config.default_provider
+        provider_color = "magenta" if provider == "langfuse" else "yellow"
+        
         welcome = Text()
         welcome.append("🐑 ", style="bold")
         welcome.append("Shepherd Shell", style="bold green")
         welcome.append(f" v{__version__}\n", style="dim")
         welcome.append("Debug your AI agents like you debug your code\n\n", style="italic")
+        welcome.append("Provider: ", style="dim")
+        welcome.append(provider, style=f"bold {provider_color}")
+        welcome.append("  (change: ", style="dim")
+        welcome.append("config set provider <name>", style="cyan")
+        welcome.append(")\n\n", style="dim")
         welcome.append("Type ", style="dim")
         welcome.append("help", style="bold cyan")
         welcome.append(" for available commands, ", style="dim")
@@ -131,37 +224,58 @@ class ShepherdShell:
         self.console.print()
 
     def _print_help(self):
-        """Print help message with available commands."""
+        """Print help message with available commands based on current provider."""
+        from shepherd.config import load_config
+        config = load_config()
+        provider = config.default_provider
+        provider_color = "magenta" if provider == "langfuse" else "yellow"
+        
         self.console.print("\n[bold]Available Commands:[/bold]\n")
 
-        # Group commands
-        groups = {
-            "Sessions": ["sessions list", "sessions get", "sessions search", "sessions diff"],
-            "Config": ["config init", "config show", "config set", "config get"],
-            "Shell": ["help", "clear", "version", "exit", "quit"],
-        }
+        # Show commands for current provider
+        self.console.print(f"  [bold {provider_color}]{provider.upper()} (active provider)[/bold {provider_color}]")
+        if hasattr(self, '_provider_commands') and provider in self._provider_commands:
+            for cmd, (_, desc) in self._provider_commands[provider].items():
+                self.console.print(f"    [green]{cmd:<28}[/green] {desc}")
+        self.console.print()
 
-        for group_name, commands in groups.items():
-            self.console.print(f"  [bold cyan]{group_name}[/bold cyan]")
-            for cmd in commands:
-                if cmd in SHELL_COMMANDS:
-                    _, desc = SHELL_COMMANDS[cmd]
-                    self.console.print(f"    [green]{cmd:<20}[/green] {desc}")
-                elif cmd == "help":
-                    self.console.print(f"    [green]{cmd:<20}[/green] Show this help message")
-                elif cmd == "clear":
-                    self.console.print(f"    [green]{cmd:<20}[/green] Clear the screen")
-                elif cmd == "version":
-                    self.console.print(f"    [green]{cmd:<20}[/green] Show version information")
-                elif cmd in ("exit", "quit"):
-                    self.console.print(f"    [green]{cmd:<20}[/green] Exit the shell")
+        # Show explicit provider commands for the OTHER provider
+        other_provider = "aiobs" if provider == "langfuse" else "langfuse"
+        other_color = "yellow" if provider == "langfuse" else "magenta"
+        explicit_cmds = [cmd for cmd in SHELL_COMMANDS.keys() if cmd.startswith(f"{other_provider} ")]
+        if explicit_cmds:
+            self.console.print(f"  [bold {other_color}]{other_provider.upper()} (use explicit prefix)[/bold {other_color}]")
+            for cmd in sorted(explicit_cmds):
+                _, desc = SHELL_COMMANDS[cmd]
+                self.console.print(f"    [green]{cmd:<28}[/green] {desc}")
             self.console.print()
+
+        # Config commands
+        self.console.print("  [bold cyan]Config[/bold cyan]")
+        for cmd in ["config init", "config show", "config set", "config get"]:
+            if cmd in SHELL_COMMANDS:
+                _, desc = SHELL_COMMANDS[cmd]
+                self.console.print(f"    [green]{cmd:<28}[/green] {desc}")
+        self.console.print()
+
+        # Shell commands
+        self.console.print("  [bold cyan]Shell[/bold cyan]")
+        shell_cmds = [
+            ("help", "Show this help message"),
+            ("clear", "Clear the screen"),
+            ("version", "Show version information"),
+            ("exit", "Exit the shell"),
+        ]
+        for cmd, desc in shell_cmds:
+            self.console.print(f"    [green]{cmd:<28}[/green] {desc}")
+        self.console.print()
 
         self.console.print("[dim]Tip: Commands work the same as CLI commands.[/dim]")
         self.console.print(
-            "[dim]Syntax:[/dim] [cyan]/command[/cyan] [dim]or[/dim] [cyan]command[/cyan]"
+            "[dim]Switch provider:[/dim] [cyan]config set provider <langfuse|aiobs>[/cyan]"
         )
-        self.console.print("[dim]Example:[/dim] [cyan]/sessions list --limit 5[/cyan]\n")
+        example_cmd = "traces list --limit 5" if provider == "langfuse" else "sessions list --limit 5"
+        self.console.print(f"[dim]Example:[/dim] [cyan]{example_cmd}[/cyan]\n")
 
     def _parse_command(self, line: str) -> tuple[str, list[str]]:
         """Parse a command line into command and arguments."""
@@ -177,10 +291,25 @@ class ShepherdShell:
         if not parts:
             return "", []
 
-        # Check for two-word commands first (e.g., "sessions list")
+        # Get current provider for checking provider-specific commands
+        from shepherd.config import load_config
+        config = load_config()
+        provider = config.default_provider
+        provider_cmds = set()
+        if hasattr(self, '_provider_commands') and provider in self._provider_commands:
+            provider_cmds = set(self._provider_commands[provider].keys())
+
+        # Check for three-word commands first (e.g., "langfuse traces list", "aiobs sessions get")
+        if len(parts) >= 3:
+            three_word = f"{parts[0]} {parts[1]} {parts[2]}"
+            if three_word in SHELL_COMMANDS:
+                return three_word, parts[3:]
+
+        # Check for two-word commands (e.g., "sessions list", "traces get")
         if len(parts) >= 2:
             two_word = f"{parts[0]} {parts[1]}"
-            if two_word in SHELL_COMMANDS:
+            # Check both global commands and provider-specific commands
+            if two_word in SHELL_COMMANDS or two_word in provider_cmds:
                 return two_word, parts[2:]
 
         return parts[0], parts[1:]
@@ -207,7 +336,30 @@ class ShepherdShell:
             self.console.print(f"[bold green]shepherd[/bold green] v{__version__}")
             return True
 
-        # Check registered commands
+        # Get current provider for dynamic command routing
+        from shepherd.config import load_config
+        config = load_config()
+        provider = config.default_provider
+
+        # Check if this is a provider-agnostic command (traces/sessions without prefix)
+        # Route to current provider's implementation
+        if hasattr(self, '_provider_commands') and provider in self._provider_commands:
+            if cmd in self._provider_commands[provider]:
+                func, _ = self._provider_commands[provider][cmd]
+                try:
+                    kwargs = self._parse_args(cmd, args)
+                    func(**kwargs)
+                except typer.Exit:
+                    pass
+                except SystemExit:
+                    pass
+                except KeyboardInterrupt:
+                    self.console.print("\n[yellow]Command interrupted.[/yellow]")
+                except Exception as e:
+                    self.console.print(f"[red]Error:[/red] {e}")
+                return True
+
+        # Check explicit provider commands (e.g., "langfuse traces list", "aiobs sessions get")
         if cmd in SHELL_COMMANDS:
             func, _ = SHELL_COMMANDS[cmd]
             try:
@@ -234,6 +386,7 @@ class ShepherdShell:
         kwargs: dict = {}
         positional: list[str] = []
         labels: list[str] = []  # Collect multiple --label flags
+        tags: list[str] = []  # Collect multiple --tag flags
         i = 0
 
         while i < len(args):
@@ -246,9 +399,11 @@ class ShepherdShell:
                     kwargs[key] = True
                     i += 1
                 elif i + 1 < len(args) and not args[i + 1].startswith("-"):
-                    # Handle --label specially - can be specified multiple times
+                    # Handle --label and --tag specially - can be specified multiple times
                     if key == "label":
                         labels.append(args[i + 1])
+                    elif key == "tag":
+                        tags.append(args[i + 1])
                     else:
                         kwargs[key] = args[i + 1]
                     i += 2
@@ -263,15 +418,20 @@ class ShepherdShell:
                     "o": "output",
                     "n": "limit",
                     "l": "label",
-                    "p": "provider",
+                    "p": "page",
                     "m": "model",
                     "f": "function",
+                    "u": "user_id",
+                    "s": "session_id",
+                    "t": "tag",
                 }
                 key = flag_map.get(key, key)
                 if i + 1 < len(args) and not args[i + 1].startswith("-"):
-                    # Handle -l specially - can be specified multiple times
+                    # Handle -l and -t specially - can be specified multiple times
                     if key == "label":
                         labels.append(args[i + 1])
+                    elif key == "tag":
+                        tags.append(args[i + 1])
                     else:
                         kwargs[key] = args[i + 1]
                     i += 2
@@ -285,31 +445,46 @@ class ShepherdShell:
         # Add collected labels if any
         if labels:
             kwargs["label"] = labels
+        
+        # Add collected tags if any
+        if tags:
+            kwargs["tags"] = tags
 
         # Handle positional arguments based on command
-        if cmd == "sessions get" and positional:
+        if cmd in ("sessions get", "aiobs sessions get", "langfuse sessions get") and positional:
             kwargs["session_id"] = positional[0]
-        elif cmd == "sessions search" and positional:
+        elif cmd in ("sessions search", "aiobs sessions search") and positional:
             kwargs["query"] = positional[0]
-        elif cmd == "sessions diff" and len(positional) >= 2:
+        elif cmd in ("sessions diff", "aiobs sessions diff") and len(positional) >= 2:
             kwargs["session_id1"] = positional[0]
             kwargs["session_id2"] = positional[1]
+        elif cmd in ("traces get", "langfuse traces get") and positional:
+            kwargs["trace_id"] = positional[0]
         elif cmd == "config set" and len(positional) >= 2:
             kwargs["key"] = positional[0]
             kwargs["value"] = positional[1]
         elif cmd == "config get" and positional:
             kwargs["key"] = positional[0]
+        elif cmd == "config init" and positional:
+            kwargs["provider"] = positional[0]
 
-        # Convert limit to int if present and not a boolean flag
-        if "limit" in kwargs:
-            if kwargs["limit"] is True:
-                # --limit was passed without a value, remove it
-                del kwargs["limit"]
-            else:
-                try:
-                    kwargs["limit"] = int(kwargs["limit"])
-                except (ValueError, TypeError):
-                    del kwargs["limit"]
+        # Convert numeric values to int if present and not a boolean flag
+        for int_field in ("limit", "page"):
+            if int_field in kwargs:
+                if kwargs[int_field] is True:
+                    # Flag was passed without a value, remove it
+                    del kwargs[int_field]
+                else:
+                    try:
+                        kwargs[int_field] = int(kwargs[int_field])
+                    except (ValueError, TypeError):
+                        del kwargs[int_field]
+
+        # Handle timestamp aliases
+        if "from" in kwargs:
+            kwargs["from_timestamp"] = kwargs.pop("from")
+        if "to" in kwargs:
+            kwargs["to_timestamp"] = kwargs.pop("to")
 
         # Handle boolean flags
         if "ids" in kwargs:
