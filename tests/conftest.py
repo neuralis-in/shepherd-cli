@@ -582,3 +582,118 @@ def empty_langfuse_sessions_response():
         "data": [],
         "meta": {"page": 1, "limit": 50, "totalItems": 0, "totalPages": 0},
     }
+
+
+# ============================================================================
+# Langfuse Search Fixtures
+# ============================================================================
+
+SAMPLE_LANGFUSE_TRACE_PROD = {
+    "id": "trace-prod-001",
+    "timestamp": "2025-12-09T14:00:00.000Z",
+    "name": "production-pipeline",
+    "userId": "alice",
+    "sessionId": "session-prod-001",
+    "tags": ["production", "v2", "critical"],
+    "release": "v2.1.0",
+    "latency": 3.5,
+    "totalCost": 0.0015,
+    "observations": [],
+}
+
+SAMPLE_LANGFUSE_TRACE_DEV = {
+    "id": "trace-dev-002",
+    "timestamp": "2025-12-08T10:00:00.000Z",
+    "name": "dev-testing",
+    "userId": "bob",
+    "sessionId": "session-dev-002",
+    "tags": ["development", "testing"],
+    "release": "v2.0.0-beta",
+    "latency": 1.2,
+    "totalCost": 0.0005,
+    "observations": [],
+}
+
+SAMPLE_LANGFUSE_TRACE_EXPENSIVE = {
+    "id": "trace-expensive-003",
+    "timestamp": "2025-12-09T16:00:00.000Z",
+    "name": "heavy-workload",
+    "userId": "alice",
+    "sessionId": "session-prod-001",
+    "tags": ["production", "heavy"],
+    "release": "v2.1.0",
+    "latency": 15.0,
+    "totalCost": 0.05,
+    "observations": [],
+}
+
+SAMPLE_LANGFUSE_SESSION_PROD = {
+    "id": "session-prod-001",
+    "createdAt": "2025-12-09T10:00:00.000Z",
+    "projectId": "project-xyz",
+    "userIds": ["alice", "charlie"],
+    "countTraces": 10,
+    "sessionDuration": 600000.0,  # 10 minutes in ms
+    "inputCost": 0.01,
+    "outputCost": 0.005,
+    "totalCost": 0.015,
+    "inputTokens": 5000,
+    "outputTokens": 2000,
+    "totalTokens": 7000,
+}
+
+SAMPLE_LANGFUSE_SESSION_DEV = {
+    "id": "session-dev-002",
+    "createdAt": "2025-12-08T09:00:00.000Z",
+    "projectId": "project-xyz",
+    "userIds": ["bob"],
+    "countTraces": 3,
+    "sessionDuration": 120000.0,  # 2 minutes in ms
+    "inputCost": 0.001,
+    "outputCost": 0.0005,
+    "totalCost": 0.0015,
+    "inputTokens": 500,
+    "outputTokens": 200,
+    "totalTokens": 700,
+}
+
+SAMPLE_LANGFUSE_SESSION_MINIMAL = {
+    "id": "session-minimal-003",
+    "createdAt": "2025-12-07T08:00:00.000Z",
+    "projectId": "project-xyz",
+    "userIds": [],
+    "countTraces": 1,
+    "sessionDuration": 10000.0,
+    "inputCost": 0.0001,
+    "outputCost": 0.00005,
+    "totalCost": 0.00015,
+    "inputTokens": 50,
+    "outputTokens": 20,
+    "totalTokens": 70,
+}
+
+
+@pytest.fixture
+def langfuse_search_traces_response():
+    """Return a Langfuse traces response with multiple traces for search testing."""
+    return {
+        "data": [
+            SAMPLE_LANGFUSE_TRACE_PROD,
+            SAMPLE_LANGFUSE_TRACE_DEV,
+            SAMPLE_LANGFUSE_TRACE_EXPENSIVE,
+        ],
+        "meta": {"page": 1, "limit": 50, "totalItems": 3, "totalPages": 1},
+    }
+
+
+@pytest.fixture
+def langfuse_search_sessions_response():
+    """Return a Langfuse sessions response with multiple sessions for search testing."""
+    return {
+        "data": [
+            SAMPLE_LANGFUSE_SESSION_PROD,
+            SAMPLE_LANGFUSE_SESSION_DEV,
+            SAMPLE_LANGFUSE_SESSION_MINIMAL,
+        ],
+        "meta": {"page": 1, "limit": 50, "totalItems": 3, "totalPages": 1},
+    }

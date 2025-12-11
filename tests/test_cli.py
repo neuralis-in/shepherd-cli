@@ -47,6 +47,7 @@ class TestHelpCommand:
         assert result.exit_code == 0
         assert "list" in result.stdout
         assert "get" in result.stdout
+        assert "search" in result.stdout
 
     def test_config_help(self):
         result = runner.invoke(app, ["config", "--help"])
@@ -899,16 +900,24 @@ class TestProviderAwareRouting:
 
         assert result.exit_code == 0
 
-    def test_sessions_search_with_langfuse_provider_shows_error(self):
-        """Sessions search with langfuse provider shows unsupported error."""
+    def test_sessions_search_with_langfuse_provider(self, langfuse_search_sessions_response):
+        """Sessions search routes to langfuse when provider is langfuse."""
+        mock_client = MagicMock()
+        mock_client.list_sessions.return_value = LangfuseSessionsResponse(**langfuse_search_sessions_response)
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+
         mock_config = MagicMock()
         mock_config.default_provider = "langfuse"
 
         with patch("shepherd.cli.main.load_config", return_value=mock_config):
-            result = runner.invoke(app, ["sessions", "search"])
+            with patch("shepherd.cli.langfuse.get_langfuse_public_key", return_value="pk-test"):
+                with patch("shepherd.cli.langfuse.get_langfuse_secret_key", return_value="sk-test"):
+                    with patch("shepherd.cli.langfuse.LangfuseClient", return_value=mock_client):
+                        result = runner.invoke(app, ["sessions", "search"])
 
-        assert result.exit_code == 1
-        assert "does not support session search" in result.stdout
+        assert result.exit_code == 0
+        assert "Search Results" in result.stdout
 
     def test_sessions_diff_with_langfuse_provider_shows_error(self):
         """Sessions diff with langfuse provider shows unsupported error."""
@@ -1076,3 +1085,388 @@ class TestLangfuseSessionsCommand:
 
         assert result.exit_code == 0
         assert "No sessions found" in result.stdout
+
+
+# ============================================================================
+# Langfuse Sessions Search Tests
+# ============================================================================
+
+
+class TestLangfuseSessionsSearchCommand:
+    """Tests for langfuse sessions search command."""
+
+    def test_sessions_search_no_filters(self, langfuse_search_sessions_response):
+        """Search sessions without filters returns all."""
+        mock_client = MagicMock()
+        mock_client.list_sessions.return_value = LangfuseSessionsResponse(**langfuse_search_sessions_response)
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+
+        with patch("shepherd.cli.langfuse.get_langfuse_public_key", return_value="pk-test"):
+            with patch("shepherd.cli.langfuse.get_langfuse_secret_key", return_value="sk-test"):
+                with patch("shepherd.cli.langfuse.LangfuseClient", return_value=mock_client):
+                    result = runner.invoke(app, ["langfuse", "sessions", "search"])
+
+        assert result.exit_code == 0
+        assert "Search Results" in result.stdout
+        assert "3 sessions" in result.stdout
+
+    def test_sessions_search_by_query(self, langfuse_search_sessions_response):
+        """Search sessions by text query."""
+        mock_client = MagicMock()
+        mock_client.list_sessions.return_value = LangfuseSessionsResponse(**langfuse_search_sessions_response)
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+
+        with patch("shepherd.cli.langfuse.get_langfuse_public_key", return_value="pk-test"):
+            with patch("shepherd.cli.langfuse.get_langfuse_secret_key", return_value="sk-test"):
+                with patch("shepherd.cli.langfuse.LangfuseClient", return_value=mock_client):
+                    result = runner.invoke(app, ["langfuse", "sessions", "search", "prod"])
+
+        assert result.exit_code == 0
+        # Should match "session-prod-001" (displayed truncated in table)
+        assert "1 sessions" in result.stdout
+        assert "session-pr" in result.stdout  # Truncated ID
+
+    def test_sessions_search_by_user_id(self, langfuse_search_sessions_response):
+        """Search sessions by user ID."""
+        mock_client = MagicMock()
+        mock_client.list_sessions.return_value = LangfuseSessionsResponse(**langfuse_search_sessions_response)
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+
+        with patch("shepherd.cli.langfuse.get_langfuse_public_key", return_value="pk-test"):
+            with patch("shepherd.cli.langfuse.get_langfuse_secret_key", return_value="sk-test"):
+                with patch("shepherd.cli.langfuse.LangfuseClient", return_value=mock_client):
+                    result = runner.invoke(app, ["langfuse", "sessions", "search", "--user-id", "alice"])
+
+        assert result.exit_code == 0
+        # Should only show session with alice
+        assert "1 sessions" in result.stdout
+
+    def test_sessions_search_by_min_traces(self, langfuse_search_sessions_response):
+        """Search sessions with minimum traces filter."""
+        mock_client = MagicMock()
+        mock_client.list_sessions.return_value = LangfuseSessionsResponse(**langfuse_search_sessions_response)
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+
+        with patch("shepherd.cli.langfuse.get_langfuse_public_key", return_value="pk-test"):
+            with patch("shepherd.cli.langfuse.get_langfuse_secret_key", return_value="sk-test"):
+                with patch("shepherd.cli.langfuse.LangfuseClient", return_value=mock_client):
+                    result = runner.invoke(app, ["langfuse", "sessions", "search", "--min-traces", "5"])
+
+        assert result.exit_code == 0
+        # Only session with 10 traces should match
+        assert "1 sessions" in result.stdout
+
+    def test_sessions_search_by_cost_range(self, langfuse_search_sessions_response):
+        """Search sessions with cost filters."""
+        mock_client = MagicMock()
+        mock_client.list_sessions.return_value = LangfuseSessionsResponse(**langfuse_search_sessions_response)
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+
+        with patch("shepherd.cli.langfuse.get_langfuse_public_key", return_value="pk-test"):
+            with patch("shepherd.cli.langfuse.get_langfuse_secret_key", return_value="sk-test"):
+                with patch("shepherd.cli.langfuse.LangfuseClient", return_value=mock_client):
+                    result = runner.invoke(
+                        app, ["langfuse", "sessions", "search", "--min-cost", "0.01"]
+                    )
+
+        assert result.exit_code == 0
+        # Only the prod session with cost 0.015 should match
+        assert "1 sessions" in result.stdout
+
+    def test_sessions_search_ids_only(self, langfuse_search_sessions_response):
+        """Search sessions with --ids flag shows only IDs."""
+        mock_client = MagicMock()
+        mock_client.list_sessions.return_value = LangfuseSessionsResponse(**langfuse_search_sessions_response)
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+
+        with patch("shepherd.cli.langfuse.get_langfuse_public_key", return_value="pk-test"):
+            with patch("shepherd.cli.langfuse.get_langfuse_secret_key", return_value="sk-test"):
+                with patch("shepherd.cli.langfuse.LangfuseClient", return_value=mock_client):
+                    result = runner.invoke(app, ["langfuse", "sessions", "search", "--ids"])
+
+        assert result.exit_code == 0
+        assert "session-prod-001" in result.stdout
+        assert "session-dev-002" in result.stdout
+        # Should not have table formatting
+        assert "Search Results" not in result.stdout
+
+    def test_sessions_search_json_output(self, langfuse_search_sessions_response):
+        """Search sessions with JSON output."""
+        mock_client = MagicMock()
+        mock_client.list_sessions.return_value = LangfuseSessionsResponse(**langfuse_search_sessions_response)
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+
+        with patch("shepherd.cli.langfuse.get_langfuse_public_key", return_value="pk-test"):
+            with patch("shepherd.cli.langfuse.get_langfuse_secret_key", return_value="sk-test"):
+                with patch("shepherd.cli.langfuse.LangfuseClient", return_value=mock_client):
+                    result = runner.invoke(app, ["langfuse", "sessions", "search", "-o", "json"])
+
+        assert result.exit_code == 0
+        assert '"sessions"' in result.stdout
+        assert '"session-prod-001"' in result.stdout
+
+    def test_sessions_search_no_results(self, langfuse_search_sessions_response):
+        """Search sessions with no matching results."""
+        mock_client = MagicMock()
+        mock_client.list_sessions.return_value = LangfuseSessionsResponse(**langfuse_search_sessions_response)
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+
+        with patch("shepherd.cli.langfuse.get_langfuse_public_key", return_value="pk-test"):
+            with patch("shepherd.cli.langfuse.get_langfuse_secret_key", return_value="sk-test"):
+                with patch("shepherd.cli.langfuse.LangfuseClient", return_value=mock_client):
+                    result = runner.invoke(app, ["langfuse", "sessions", "search", "nonexistent"])
+
+        assert result.exit_code == 0
+        assert "No sessions match" in result.stdout
+
+
+# ============================================================================
+# Langfuse Traces Search Tests
+# ============================================================================
+
+
+class TestLangfuseTracesSearchCommand:
+    """Tests for langfuse traces search command."""
+
+    def test_traces_search_no_filters(self, langfuse_search_traces_response):
+        """Search traces without filters returns all."""
+        mock_client = MagicMock()
+        mock_client.list_traces.return_value = LangfuseTracesResponse(**langfuse_search_traces_response)
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+
+        with patch("shepherd.cli.langfuse.get_langfuse_public_key", return_value="pk-test"):
+            with patch("shepherd.cli.langfuse.get_langfuse_secret_key", return_value="sk-test"):
+                with patch("shepherd.cli.langfuse.LangfuseClient", return_value=mock_client):
+                    result = runner.invoke(app, ["langfuse", "traces", "search"])
+
+        assert result.exit_code == 0
+        assert "Search Results" in result.stdout
+        assert "3 traces" in result.stdout
+
+    def test_traces_search_by_query(self, langfuse_search_traces_response):
+        """Search traces by text query."""
+        mock_client = MagicMock()
+        mock_client.list_traces.return_value = LangfuseTracesResponse(**langfuse_search_traces_response)
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+
+        with patch("shepherd.cli.langfuse.get_langfuse_public_key", return_value="pk-test"):
+            with patch("shepherd.cli.langfuse.get_langfuse_secret_key", return_value="sk-test"):
+                with patch("shepherd.cli.langfuse.LangfuseClient", return_value=mock_client):
+                    result = runner.invoke(app, ["langfuse", "traces", "search", "production"])
+
+        assert result.exit_code == 0
+        # Should match traces with "production" in name or tags
+        # Note: 2 traces match - production-pipeline and heavy-workload (has production tag)
+        assert "2 traces" in result.stdout
+        assert "productio" in result.stdout  # Truncated in table display
+
+    def test_traces_search_by_user_id(self, langfuse_search_traces_response):
+        """Search traces by user ID."""
+        mock_client = MagicMock()
+        mock_client.list_traces.return_value = LangfuseTracesResponse(**langfuse_search_traces_response)
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+
+        with patch("shepherd.cli.langfuse.get_langfuse_public_key", return_value="pk-test"):
+            with patch("shepherd.cli.langfuse.get_langfuse_secret_key", return_value="sk-test"):
+                with patch("shepherd.cli.langfuse.LangfuseClient", return_value=mock_client):
+                    result = runner.invoke(app, ["langfuse", "traces", "search", "--user-id", "bob"])
+
+        assert result.exit_code == 0
+        # API filter applied, so mock will return all but client shows results
+        mock_client.list_traces.assert_called_once()
+        call_kwargs = mock_client.list_traces.call_args[1]
+        assert call_kwargs["user_id"] == "bob"
+
+    def test_traces_search_by_tag(self, langfuse_search_traces_response):
+        """Search traces by tag."""
+        mock_client = MagicMock()
+        mock_client.list_traces.return_value = LangfuseTracesResponse(**langfuse_search_traces_response)
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+
+        with patch("shepherd.cli.langfuse.get_langfuse_public_key", return_value="pk-test"):
+            with patch("shepherd.cli.langfuse.get_langfuse_secret_key", return_value="sk-test"):
+                with patch("shepherd.cli.langfuse.LangfuseClient", return_value=mock_client):
+                    result = runner.invoke(app, ["langfuse", "traces", "search", "-t", "production"])
+
+        assert result.exit_code == 0
+        mock_client.list_traces.assert_called_once()
+        call_kwargs = mock_client.list_traces.call_args[1]
+        assert call_kwargs["tags"] == ["production"]
+
+    def test_traces_search_by_cost_range(self, langfuse_search_traces_response):
+        """Search traces with cost filters."""
+        mock_client = MagicMock()
+        mock_client.list_traces.return_value = LangfuseTracesResponse(**langfuse_search_traces_response)
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+
+        with patch("shepherd.cli.langfuse.get_langfuse_public_key", return_value="pk-test"):
+            with patch("shepherd.cli.langfuse.get_langfuse_secret_key", return_value="sk-test"):
+                with patch("shepherd.cli.langfuse.LangfuseClient", return_value=mock_client):
+                    result = runner.invoke(
+                        app, ["langfuse", "traces", "search", "--min-cost", "0.01"]
+                    )
+
+        assert result.exit_code == 0
+        # Only the expensive trace should match
+        assert "1 traces" in result.stdout
+
+    def test_traces_search_by_latency_range(self, langfuse_search_traces_response):
+        """Search traces with latency filters."""
+        mock_client = MagicMock()
+        mock_client.list_traces.return_value = LangfuseTracesResponse(**langfuse_search_traces_response)
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+
+        with patch("shepherd.cli.langfuse.get_langfuse_public_key", return_value="pk-test"):
+            with patch("shepherd.cli.langfuse.get_langfuse_secret_key", return_value="sk-test"):
+                with patch("shepherd.cli.langfuse.LangfuseClient", return_value=mock_client):
+                    result = runner.invoke(
+                        app, ["langfuse", "traces", "search", "--max-latency", "2.0"]
+                    )
+
+        assert result.exit_code == 0
+        # Only dev trace with latency 1.2s should match
+        assert "1 traces" in result.stdout
+
+    def test_traces_search_by_release(self, langfuse_search_traces_response):
+        """Search traces by release."""
+        mock_client = MagicMock()
+        mock_client.list_traces.return_value = LangfuseTracesResponse(**langfuse_search_traces_response)
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+
+        with patch("shepherd.cli.langfuse.get_langfuse_public_key", return_value="pk-test"):
+            with patch("shepherd.cli.langfuse.get_langfuse_secret_key", return_value="sk-test"):
+                with patch("shepherd.cli.langfuse.LangfuseClient", return_value=mock_client):
+                    result = runner.invoke(
+                        app, ["langfuse", "traces", "search", "--release", "v2.1.0"]
+                    )
+
+        assert result.exit_code == 0
+        # Two traces have v2.1.0 release
+        assert "2 traces" in result.stdout
+
+    def test_traces_search_ids_only(self, langfuse_search_traces_response):
+        """Search traces with --ids flag shows only IDs."""
+        mock_client = MagicMock()
+        mock_client.list_traces.return_value = LangfuseTracesResponse(**langfuse_search_traces_response)
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+
+        with patch("shepherd.cli.langfuse.get_langfuse_public_key", return_value="pk-test"):
+            with patch("shepherd.cli.langfuse.get_langfuse_secret_key", return_value="sk-test"):
+                with patch("shepherd.cli.langfuse.LangfuseClient", return_value=mock_client):
+                    result = runner.invoke(app, ["langfuse", "traces", "search", "--ids"])
+
+        assert result.exit_code == 0
+        assert "trace-prod-001" in result.stdout
+        assert "trace-dev-002" in result.stdout
+        assert "trace-expensive-003" in result.stdout
+        # Should not have table formatting
+        assert "Search Results" not in result.stdout
+
+    def test_traces_search_json_output(self, langfuse_search_traces_response):
+        """Search traces with JSON output."""
+        mock_client = MagicMock()
+        mock_client.list_traces.return_value = LangfuseTracesResponse(**langfuse_search_traces_response)
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+
+        with patch("shepherd.cli.langfuse.get_langfuse_public_key", return_value="pk-test"):
+            with patch("shepherd.cli.langfuse.get_langfuse_secret_key", return_value="sk-test"):
+                with patch("shepherd.cli.langfuse.LangfuseClient", return_value=mock_client):
+                    result = runner.invoke(app, ["langfuse", "traces", "search", "-o", "json"])
+
+        assert result.exit_code == 0
+        assert '"traces"' in result.stdout
+        assert '"trace-prod-001"' in result.stdout
+
+    def test_traces_search_combined_filters(self, langfuse_search_traces_response):
+        """Search traces with multiple filters."""
+        mock_client = MagicMock()
+        mock_client.list_traces.return_value = LangfuseTracesResponse(**langfuse_search_traces_response)
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+
+        with patch("shepherd.cli.langfuse.get_langfuse_public_key", return_value="pk-test"):
+            with patch("shepherd.cli.langfuse.get_langfuse_secret_key", return_value="sk-test"):
+                with patch("shepherd.cli.langfuse.LangfuseClient", return_value=mock_client):
+                    result = runner.invoke(
+                        app,
+                        ["langfuse", "traces", "search", "--release", "v2.1.0", "--max-latency", "10.0"],
+                    )
+
+        assert result.exit_code == 0
+        # Only prod trace matches (v2.1.0 and latency 3.5s < 10)
+        assert "1 traces" in result.stdout
+
+
+# ============================================================================
+# Provider-Aware Search Routing Tests
+# ============================================================================
+
+
+class TestProviderAwareSearchRouting:
+    """Tests for provider-aware search command routing."""
+
+    def test_sessions_search_routes_to_langfuse(self, langfuse_search_sessions_response):
+        """Sessions search routes to langfuse when provider is langfuse."""
+        mock_client = MagicMock()
+        mock_client.list_sessions.return_value = LangfuseSessionsResponse(**langfuse_search_sessions_response)
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+
+        mock_config = MagicMock()
+        mock_config.default_provider = "langfuse"
+
+        with patch("shepherd.cli.main.load_config", return_value=mock_config):
+            with patch("shepherd.cli.langfuse.get_langfuse_public_key", return_value="pk-test"):
+                with patch("shepherd.cli.langfuse.get_langfuse_secret_key", return_value="sk-test"):
+                    with patch("shepherd.cli.langfuse.LangfuseClient", return_value=mock_client):
+                        result = runner.invoke(app, ["sessions", "search"])
+
+        assert result.exit_code == 0
+        assert "Search Results" in result.stdout
+
+    def test_traces_search_routes_to_langfuse(self, langfuse_search_traces_response):
+        """Traces search routes to langfuse when provider is langfuse."""
+        mock_client = MagicMock()
+        mock_client.list_traces.return_value = LangfuseTracesResponse(**langfuse_search_traces_response)
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+
+        mock_config = MagicMock()
+        mock_config.default_provider = "langfuse"
+
+        with patch("shepherd.cli.main.load_config", return_value=mock_config):
+            with patch("shepherd.cli.langfuse.get_langfuse_public_key", return_value="pk-test"):
+                with patch("shepherd.cli.langfuse.get_langfuse_secret_key", return_value="sk-test"):
+                    with patch("shepherd.cli.langfuse.LangfuseClient", return_value=mock_client):
+                        result = runner.invoke(app, ["traces", "search"])
+
+        assert result.exit_code == 0
+        assert "Search Results" in result.stdout
+
+    def test_traces_search_with_aiobs_provider_shows_error(self):
+        """Traces search with aiobs provider shows unsupported error."""
+        mock_config = MagicMock()
+        mock_config.default_provider = "aiobs"
+
+        with patch("shepherd.cli.main.load_config", return_value=mock_config):
+            result = runner.invoke(app, ["traces", "search"])
+
+        assert result.exit_code == 1
+        assert "does not support trace search" in result.stdout
