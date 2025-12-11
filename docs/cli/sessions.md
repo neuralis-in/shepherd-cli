@@ -1,5 +1,7 @@
 # Sessions Commands
 
+Sessions commands work with both AIOBS and Langfuse providers. The available options vary by provider.
+
 ## `shepherd sessions list`
 
 List all sessions.
@@ -10,11 +12,14 @@ shepherd sessions list [OPTIONS]
 
 **Options:**
 
-| Option | Short | Description |
-|--------|-------|-------------|
-| `--output` | `-o` | Output format: `table` or `json` |
-| `--limit` | `-n` | Max sessions to display |
-| `--ids` | | Print only session IDs |
+| Option | Short | Description | AIOBS | Langfuse |
+|--------|-------|-------------|-------|----------|
+| `--output` | `-o` | Output format: `table` or `json` | ✅ | ✅ |
+| `--limit` | `-n` | Max sessions to display | ✅ | ✅ |
+| `--page` | `-p` | Page number | ❌ | ✅ |
+| `--from` | | Filter after timestamp | ❌ | ✅ |
+| `--to` | | Filter before timestamp | ❌ | ✅ |
+| `--ids` | | Print only session IDs | ✅ | ✅ |
 
 **Examples:**
 
@@ -23,6 +28,10 @@ shepherd sessions list
 shepherd sessions list -n 10
 shepherd sessions list -o json
 shepherd sessions list --ids
+
+# Langfuse pagination
+shepherd sessions list --page 2 -n 20
+shepherd sessions list --from 2025-12-01
 ```
 
 ## `shepherd sessions get`
@@ -48,7 +57,7 @@ shepherd sessions get be393d0d-7139-4241-a00d-e3c9ff4f9fcf -o json
 
 ## `shepherd sessions search`
 
-Search and filter sessions.
+Search and filter sessions. Options vary by provider.
 
 ```bash
 shepherd sessions search [QUERY] [OPTIONS]
@@ -58,14 +67,14 @@ shepherd sessions search [QUERY] [OPTIONS]
 
 | Argument | Description |
 |----------|-------------|
-| `QUERY` | Text search (matches session name, ID, labels, or metadata) |
+| `QUERY` | Text search (matches session ID, name, labels, metadata, or user IDs) |
 
-**Options:**
+### AIOBS Options
 
 | Option | Short | Description |
 |--------|-------|-------------|
 | `--label` | `-l` | Filter by label (`key=value`, can specify multiple) |
-| `--provider` | `-p` | Filter by provider (e.g., `openai`, `anthropic`) |
+| `--provider` | `-p` | Filter by LLM provider (e.g., `openai`, `anthropic`) |
 | `--model` | `-m` | Filter by model name (e.g., `gpt-4`, `claude-3`) |
 | `--function` | `-f` | Filter by function name |
 | `--after` | | Sessions started after date (`YYYY-MM-DD`) |
@@ -76,7 +85,23 @@ shepherd sessions search [QUERY] [OPTIONS]
 | `--limit` | `-n` | Max sessions to display |
 | `--ids` | | Print only session IDs |
 
-**Examples:**
+### Langfuse Options
+
+| Option | Short | Description |
+|--------|-------|-------------|
+| `--user-id` | `-u` | Filter by user ID |
+| `--min-traces` | | Minimum number of traces |
+| `--max-traces` | | Maximum number of traces |
+| `--min-cost` | | Minimum total cost |
+| `--max-cost` | | Maximum total cost |
+| `--from` / `--after` | | Sessions after timestamp |
+| `--to` / `--before` | | Sessions before timestamp |
+| `--output` | `-o` | Output format: `table` or `json` |
+| `--limit` | `-n` | Max sessions to display |
+| `--page` | `-p` | Page number |
+| `--ids` | | Print only session IDs |
+
+### AIOBS Examples
 
 ```bash
 # Text search
@@ -106,9 +131,40 @@ shepherd sessions search "agent" --provider openai --model gpt-4 --has-errors
 shepherd sessions search -p anthropic -l user=alice --after 2025-12-01 -n 10
 ```
 
-## `shepherd sessions diff`
+### Langfuse Examples
 
-Compare two sessions and show their differences.
+```bash
+# Text search (matches session ID, user IDs)
+shepherd sessions search "user-123"
+
+# Filter by user
+shepherd sessions search --user-id alice
+shepherd sessions search -u bob
+
+# Filter by trace count
+shepherd sessions search --min-traces 5
+shepherd sessions search --max-traces 10
+
+# Filter by cost
+shepherd sessions search --min-cost 0.01
+shepherd sessions search --min-cost 0.001 --max-cost 0.10
+
+# Date range
+shepherd sessions search --from 2025-12-01
+shepherd sessions search --after 2025-12-01 --before 2025-12-07
+
+# Combined filters
+shepherd sessions search --user-id alice --min-cost 0.01
+shepherd sessions search --min-traces 5 --from 2025-12-01 -n 20
+
+# Output options
+shepherd sessions search --min-cost 0.01 -o json
+shepherd sessions search --user-id alice --ids
+```
+
+## `shepherd sessions diff` (AIOBS only)
+
+Compare two sessions and show their differences. This command is only available for AIOBS provider.
 
 ```bash
 shepherd sessions diff <session-id1> <session-id2> [OPTIONS]
@@ -151,6 +207,9 @@ shepherd sessions diff abc123 def456 -o json
 
 # Compare baseline vs experiment
 shepherd sessions diff baseline-session-id experiment-session-id
+
+# Explicit AIOBS command
+shepherd aiobs sessions diff abc123 def456
 ```
 
 **Example Output:**
@@ -177,7 +236,25 @@ Tools Used:
   Common: get_file_contents
 ```
 
+## Explicit Provider Commands
+
+Use provider-specific commands to bypass routing:
+
+```bash
+# AIOBS sessions
+shepherd aiobs sessions list
+shepherd aiobs sessions search --has-errors
+shepherd aiobs sessions diff session1 session2
+
+# Langfuse sessions
+shepherd langfuse sessions list
+shepherd langfuse sessions search --user-id alice
+shepherd langfuse sessions get session-abc
+```
+
 ## Scripting
+
+### AIOBS Examples
 
 ```bash
 # Process sessions in a loop
@@ -206,5 +283,28 @@ shepherd sessions diff "${SESSIONS[0]}" "${SESSIONS[1]}"
 
 # Export diff to JSON for analysis
 shepherd sessions diff session-v1 session-v2 -o json > diff_report.json
+```
+
+### Langfuse Examples
+
+```bash
+# Process sessions in a loop
+for sid in $(shepherd langfuse sessions list --ids -n 5); do
+    shepherd langfuse sessions get "$sid" -o json > "session_${sid}.json"
+done
+
+# Pipe to jq
+shepherd langfuse sessions list -o json | jq '.sessions[].id'
+
+# Find expensive sessions
+shepherd langfuse sessions search --min-cost 0.05 -o json
+
+# Export user sessions
+shepherd langfuse sessions search --user-id alice -o json > alice_sessions.json
+
+# Get sessions with many traces
+for sid in $(shepherd langfuse sessions search --min-traces 10 --ids); do
+    echo "Session $sid has 10+ traces"
+done
 ```
 

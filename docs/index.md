@@ -30,8 +30,8 @@ Visualize execution flows with hierarchical trace trees.
 Export traces for analysis or integration with other tools.
 :::
 
-:::{grid-item-card} 🔌 Provider Agnostic
-Works with any LLM provider. Currently supports AIOBS.
+:::{grid-item-card} 🔌 Multi-Provider
+Works with multiple observability platforms: AIOBS and Langfuse.
 :::
 
 :::{grid-item-card} 💻 Interactive Shell
@@ -97,6 +97,7 @@ cli/overview
 cli/shell
 cli/config
 cli/sessions
+cli/traces
 concepts/sessions
 concepts/providers
 development/contributing
