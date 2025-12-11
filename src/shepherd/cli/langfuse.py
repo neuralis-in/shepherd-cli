@@ -561,6 +561,269 @@ def get_trace(
 
 
 # ============================================================================
+# Traces Search
+# ============================================================================
+
+
+def _trace_matches_query(trace: LangfuseTrace, query: str) -> bool:
+    """Check if a trace matches the text query."""
+    query_lower = query.lower()
+    # Match against trace ID
+    if query_lower in trace.id.lower():
+        return True
+    # Match against trace name
+    if trace.name and query_lower in trace.name.lower():
+        return True
+    # Match against user ID
+    if trace.user_id and query_lower in trace.user_id.lower():
+        return True
+    # Match against session ID
+    if trace.session_id and query_lower in trace.session_id.lower():
+        return True
+    # Match against tags
+    for tag in trace.tags:
+        if query_lower in tag.lower():
+            return True
+    # Match against release
+    if trace.release and query_lower in trace.release.lower():
+        return True
+    return False
+
+
+def _print_traces_search_results(
+    traces: list[LangfuseTrace],
+    query: str | None = None,
+) -> None:
+    """Print trace search results with highlighting."""
+    import re
+
+    if not traces:
+        console.print("[yellow]No traces match your search criteria.[/yellow]")
+        return
+
+    table = Table(
+        title=f"Search Results ({len(traces)} traces)",
+        show_header=True,
+        header_style="bold cyan",
+    )
+    table.add_column("ID", style="dim")
+    table.add_column("Name", style="bold")
+    table.add_column("Timestamp", style="green")
+    table.add_column("Latency", style="yellow", justify="right")
+    table.add_column("Cost", justify="right")
+    table.add_column("User", style="dim")
+    table.add_column("Tags", style="dim")
+
+    for trace in traces:
+        tags = ", ".join(trace.tags[:3]) if trace.tags else ""
+        if len(trace.tags) > 3:
+            tags += "..."
+
+        # Highlight name if query matches
+        name = trace.name or "-"
+        if query and trace.name and query.lower() in trace.name.lower():
+            pattern = re.compile(re.escape(query), re.IGNORECASE)
+            name = pattern.sub(f"[bold yellow]{query}[/bold yellow]", name)
+
+        table.add_row(
+            trace.id[:12] + "...",
+            name,
+            _format_timestamp(trace.timestamp),
+            _format_duration(trace.latency),
+            _format_cost(trace.total_cost),
+            (trace.user_id[:12] + "...") if trace.user_id and len(trace.user_id) > 12 else trace.user_id or "-",
+            tags,
+        )
+
+    console.print(table)
+
+
+@traces_app.command("search")
+def search_traces(
+    query: str | None = typer.Argument(
+        None,
+        help="Search query (matches trace name, ID, user ID, session ID, or tags)",
+    ),
+    name: str | None = typer.Option(
+        None,
+        "--name",
+        help="Filter by trace name",
+    ),
+    user_id: str | None = typer.Option(
+        None,
+        "--user-id",
+        "-u",
+        help="Filter by user ID",
+    ),
+    session_id: str | None = typer.Option(
+        None,
+        "--session-id",
+        "-s",
+        help="Filter by session ID",
+    ),
+    tags: list[str] | None = typer.Option(
+        None,
+        "--tag",
+        "-t",
+        help="Filter by tag (can specify multiple)",
+    ),
+    release: str | None = typer.Option(
+        None,
+        "--release",
+        "-r",
+        help="Filter by release",
+    ),
+    min_cost: float | None = typer.Option(
+        None,
+        "--min-cost",
+        help="Minimum total cost",
+    ),
+    max_cost: float | None = typer.Option(
+        None,
+        "--max-cost",
+        help="Maximum total cost",
+    ),
+    min_latency: float | None = typer.Option(
+        None,
+        "--min-latency",
+        help="Minimum latency in seconds",
+    ),
+    max_latency: float | None = typer.Option(
+        None,
+        "--max-latency",
+        help="Maximum latency in seconds",
+    ),
+    from_timestamp: str | None = typer.Option(
+        None,
+        "--from",
+        "--after",
+        help="Filter traces after this timestamp (ISO 8601 or YYYY-MM-DD)",
+    ),
+    to_timestamp: str | None = typer.Option(
+        None,
+        "--to",
+        "--before",
+        help="Filter traces before this timestamp (ISO 8601 or YYYY-MM-DD)",
+    ),
+    output: str | None = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Output format: table or json",
+    ),
+    limit: int = typer.Option(
+        50,
+        "--limit",
+        "-n",
+        help="Maximum number of traces to display",
+    ),
+    page: int = typer.Option(
+        1,
+        "--page",
+        "-p",
+        help="Page number",
+    ),
+    ids_only: bool = typer.Option(
+        False,
+        "--ids",
+        help="Only print trace IDs (one per line)",
+    ),
+):
+    """Search and filter Langfuse traces.
+
+    Examples:
+
+        shepherd langfuse traces search "my-agent"
+
+        shepherd langfuse traces search --name "chat-completion"
+
+        shepherd langfuse traces search --user-id alice --tag production
+
+        shepherd langfuse traces search --min-cost 0.10 --max-latency 5.0
+
+        shepherd langfuse traces search --from 2024-12-01 --session-id "session-123"
+    """
+    config = load_config()
+    output_format = output or config.cli.output_format
+
+    try:
+        with _get_client() as client:
+            # Use API-level filters where supported
+            response = client.list_traces(
+                limit=limit,
+                page=page,
+                name=name,
+                user_id=user_id,
+                session_id=session_id,
+                tags=tags,
+                from_timestamp=from_timestamp,
+                to_timestamp=to_timestamp,
+            )
+
+            # Apply additional client-side filters
+            filtered_traces = response.data
+
+            # Text query filter
+            if query:
+                filtered_traces = [
+                    t for t in filtered_traces
+                    if _trace_matches_query(t, query)
+                ]
+
+            # Release filter (client-side)
+            if release:
+                release_lower = release.lower()
+                filtered_traces = [
+                    t for t in filtered_traces
+                    if t.release and release_lower in t.release.lower()
+                ]
+
+            # Cost filters (client-side)
+            if min_cost is not None:
+                filtered_traces = [
+                    t for t in filtered_traces
+                    if t.total_cost is not None and t.total_cost >= min_cost
+                ]
+            if max_cost is not None:
+                filtered_traces = [
+                    t for t in filtered_traces
+                    if t.total_cost is not None and t.total_cost <= max_cost
+                ]
+
+            # Latency filters (client-side)
+            if min_latency is not None:
+                filtered_traces = [
+                    t for t in filtered_traces
+                    if t.latency is not None and t.latency >= min_latency
+                ]
+            if max_latency is not None:
+                filtered_traces = [
+                    t for t in filtered_traces
+                    if t.latency is not None and t.latency <= max_latency
+                ]
+
+            # Output
+            if ids_only:
+                for trace in filtered_traces:
+                    console.print(trace.id)
+            elif output_format == "json":
+                output_data = {
+                    "traces": [t.model_dump(by_alias=True) for t in filtered_traces],
+                    "meta": response.meta,
+                }
+                console.print_json(json.dumps(output_data, indent=2, default=str))
+            else:
+                _print_traces_search_results(filtered_traces, query)
+
+    except AuthenticationError as e:
+        console.print(f"[red]Authentication failed:[/red] {e}")
+        raise typer.Exit(1)
+    except LangfuseError as e:
+        console.print(f"[red]Error:[/red] {e}")
+        raise typer.Exit(1)
+
+
+# ============================================================================
 # Sessions Commands
 # ============================================================================
 
@@ -759,6 +1022,227 @@ def get_session(
         raise typer.Exit(1)
     except NotFoundError as e:
         console.print(f"[red]Session not found:[/red] {e}")
+        raise typer.Exit(1)
+    except LangfuseError as e:
+        console.print(f"[red]Error:[/red] {e}")
+        raise typer.Exit(1)
+
+
+# ============================================================================
+# Sessions Search
+# ============================================================================
+
+
+def _session_matches_query(session: LangfuseSession, query: str) -> bool:
+    """Check if a session matches the text query."""
+    query_lower = query.lower()
+    # Match against session ID
+    if query_lower in session.id.lower():
+        return True
+    # Match against user IDs
+    for user_id in session.user_ids:
+        if query_lower in user_id.lower():
+            return True
+    return False
+
+
+def _print_sessions_search_results(
+    sessions: list[LangfuseSession],
+    query: str | None = None,
+) -> None:
+    """Print session search results with highlighting."""
+    import re
+
+    if not sessions:
+        console.print("[yellow]No sessions match your search criteria.[/yellow]")
+        return
+
+    table = Table(
+        title=f"Search Results ({len(sessions)} sessions)",
+        show_header=True,
+        header_style="bold cyan",
+    )
+    table.add_column("ID", style="dim")
+    table.add_column("Created", style="green")
+    table.add_column("Traces", justify="right")
+    table.add_column("Duration", style="yellow", justify="right")
+    table.add_column("Tokens", justify="right")
+    table.add_column("Cost", justify="right")
+    table.add_column("Users", style="dim")
+
+    for session in sessions:
+        users = ", ".join(session.user_ids[:2]) if session.user_ids else "-"
+        if len(session.user_ids) > 2:
+            users += "..."
+
+        # Highlight session ID if query matches
+        session_id_display = session.id[:20] + "..." if len(session.id) > 20 else session.id
+        if query and query.lower() in session.id.lower():
+            pattern = re.compile(re.escape(query), re.IGNORECASE)
+            session_id_display = pattern.sub(f"[bold yellow]{query}[/bold yellow]", session_id_display)
+
+        table.add_row(
+            session_id_display,
+            _format_timestamp(session.created_at),
+            str(session.count_traces),
+            _format_duration(session.session_duration / 1000 if session.session_duration else None),
+            _format_tokens(session.total_tokens),
+            _format_cost(session.total_cost),
+            users,
+        )
+
+    console.print(table)
+
+
+@sessions_app.command("search")
+def search_sessions(
+    query: str | None = typer.Argument(
+        None,
+        help="Search query (matches session ID or user IDs)",
+    ),
+    user_id: str | None = typer.Option(
+        None,
+        "--user-id",
+        "-u",
+        help="Filter by user ID",
+    ),
+    min_traces: int | None = typer.Option(
+        None,
+        "--min-traces",
+        help="Minimum number of traces in session",
+    ),
+    max_traces: int | None = typer.Option(
+        None,
+        "--max-traces",
+        help="Maximum number of traces in session",
+    ),
+    min_cost: float | None = typer.Option(
+        None,
+        "--min-cost",
+        help="Minimum total cost",
+    ),
+    max_cost: float | None = typer.Option(
+        None,
+        "--max-cost",
+        help="Maximum total cost",
+    ),
+    from_timestamp: str | None = typer.Option(
+        None,
+        "--from",
+        "--after",
+        help="Filter sessions after this timestamp (ISO 8601 or YYYY-MM-DD)",
+    ),
+    to_timestamp: str | None = typer.Option(
+        None,
+        "--to",
+        "--before",
+        help="Filter sessions before this timestamp (ISO 8601 or YYYY-MM-DD)",
+    ),
+    output: str | None = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Output format: table or json",
+    ),
+    limit: int = typer.Option(
+        50,
+        "--limit",
+        "-n",
+        help="Maximum number of sessions to display",
+    ),
+    page: int = typer.Option(
+        1,
+        "--page",
+        "-p",
+        help="Page number",
+    ),
+    ids_only: bool = typer.Option(
+        False,
+        "--ids",
+        help="Only print session IDs (one per line)",
+    ),
+):
+    """Search and filter Langfuse sessions.
+
+    Examples:
+
+        shepherd langfuse sessions search "user-123"
+
+        shepherd langfuse sessions search --user-id alice
+
+        shepherd langfuse sessions search --min-traces 5 --min-cost 0.10
+
+        shepherd langfuse sessions search --from 2024-12-01 --to 2024-12-07
+    """
+    config = load_config()
+    output_format = output or config.cli.output_format
+
+    try:
+        with _get_client() as client:
+            response = client.list_sessions(
+                limit=limit,
+                page=page,
+                from_timestamp=from_timestamp,
+                to_timestamp=to_timestamp,
+            )
+
+            # Apply client-side filters
+            filtered_sessions = response.data
+
+            # Text query filter
+            if query:
+                filtered_sessions = [
+                    s for s in filtered_sessions
+                    if _session_matches_query(s, query)
+                ]
+
+            # User ID filter
+            if user_id:
+                user_id_lower = user_id.lower()
+                filtered_sessions = [
+                    s for s in filtered_sessions
+                    if any(user_id_lower in uid.lower() for uid in s.user_ids)
+                ]
+
+            # Trace count filters
+            if min_traces is not None:
+                filtered_sessions = [
+                    s for s in filtered_sessions
+                    if s.count_traces >= min_traces
+                ]
+            if max_traces is not None:
+                filtered_sessions = [
+                    s for s in filtered_sessions
+                    if s.count_traces <= max_traces
+                ]
+
+            # Cost filters
+            if min_cost is not None:
+                filtered_sessions = [
+                    s for s in filtered_sessions
+                    if s.total_cost >= min_cost
+                ]
+            if max_cost is not None:
+                filtered_sessions = [
+                    s for s in filtered_sessions
+                    if s.total_cost <= max_cost
+                ]
+
+            # Output
+            if ids_only:
+                for session in filtered_sessions:
+                    console.print(session.id)
+            elif output_format == "json":
+                output_data = {
+                    "sessions": [s.model_dump(by_alias=True) for s in filtered_sessions],
+                    "meta": response.meta,
+                }
+                console.print_json(json.dumps(output_data, indent=2, default=str))
+            else:
+                _print_sessions_search_results(filtered_sessions, query)
+
+    except AuthenticationError as e:
+        console.print(f"[red]Authentication failed:[/red] {e}")
         raise typer.Exit(1)
     except LangfuseError as e:
         console.print(f"[red]Error:[/red] {e}")

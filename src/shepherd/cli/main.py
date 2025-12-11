@@ -95,6 +95,44 @@ def traces_get(
         raise typer.Exit(1)
 
 
+@traces_app.command("search")
+def traces_search(
+    query: Optional[str] = typer.Argument(None, help="Search query"),
+    name: Optional[str] = typer.Option(None, "--name", help="Filter by trace name"),
+    user_id: Optional[str] = typer.Option(None, "--user-id", "-u", help="Filter by user ID"),
+    session_id: Optional[str] = typer.Option(None, "--session-id", "-s", help="Filter by session ID"),
+    tags: Optional[list[str]] = typer.Option(None, "--tag", "-t", help="Filter by tag(s)"),
+    release: Optional[str] = typer.Option(None, "--release", "-r", help="Filter by release"),
+    min_cost: Optional[float] = typer.Option(None, "--min-cost", help="Minimum cost"),
+    max_cost: Optional[float] = typer.Option(None, "--max-cost", help="Maximum cost"),
+    min_latency: Optional[float] = typer.Option(None, "--min-latency", help="Minimum latency (seconds)"),
+    max_latency: Optional[float] = typer.Option(None, "--max-latency", help="Maximum latency (seconds)"),
+    from_timestamp: Optional[str] = typer.Option(None, "--from", "--after", help="Filter from timestamp"),
+    to_timestamp: Optional[str] = typer.Option(None, "--to", "--before", help="Filter to timestamp"),
+    output: Optional[str] = typer.Option(None, "--output", "-o", help="Output format"),
+    limit: int = typer.Option(50, "--limit", "-n", help="Maximum number of traces"),
+    page: int = typer.Option(1, "--page", "-p", help="Page number"),
+    ids_only: bool = typer.Option(False, "--ids", help="Only show trace IDs"),
+):
+    """Search and filter traces."""
+    provider = _get_provider()
+    if provider == "langfuse":
+        from shepherd.cli.langfuse import search_traces
+        search_traces(
+            query=query, name=name, user_id=user_id, session_id=session_id,
+            tags=tags, release=release, min_cost=min_cost, max_cost=max_cost,
+            min_latency=min_latency, max_latency=max_latency,
+            from_timestamp=from_timestamp, to_timestamp=to_timestamp,
+            output=output, limit=limit, page=page, ids_only=ids_only,
+        )
+    else:
+        console = Console()
+        console.print(f"[yellow]Provider '{provider}' does not support trace search.[/yellow]")
+        console.print("[dim]Switch to langfuse: shepherd config set provider langfuse[/dim]")
+        console.print("[dim]Or use explicit: shepherd langfuse traces search[/dim]")
+        raise typer.Exit(1)
+
+
 app.add_typer(traces_app, name="traces", help="List and inspect traces (current provider)")
 
 
@@ -142,21 +180,34 @@ def sessions_get(
 @sessions_app.command("search")
 def sessions_search(
     query: Optional[str] = typer.Argument(None, help="Search query"),
-    label: Optional[list[str]] = typer.Option(None, "--label", "-l", help="Filter by label(s)"),
-    provider_filter: Optional[str] = typer.Option(None, "--provider", "-p", help="Filter by provider"),
-    model: Optional[str] = typer.Option(None, "--model", "-m", help="Filter by model"),
-    function: Optional[str] = typer.Option(None, "--function", "-f", help="Filter by function name"),
-    after: Optional[str] = typer.Option(None, "--after", help="Filter sessions after date"),
-    before: Optional[str] = typer.Option(None, "--before", help="Filter sessions before date"),
-    has_errors: bool = typer.Option(False, "--errors", help="Only show sessions with errors"),
-    evals_failed: bool = typer.Option(False, "--failed-evals", help="Only show sessions with failed evals"),
-    output: Optional[str] = typer.Option(None, "--output", "-o", help="Output file path"),
+    label: Optional[list[str]] = typer.Option(None, "--label", "-l", help="Filter by label(s) (AIOBS)"),
+    provider_filter: Optional[str] = typer.Option(None, "--provider", "-p", help="Filter by provider (AIOBS)"),
+    model: Optional[str] = typer.Option(None, "--model", "-m", help="Filter by model (AIOBS)"),
+    function: Optional[str] = typer.Option(None, "--function", "-f", help="Filter by function name (AIOBS)"),
+    user_id: Optional[str] = typer.Option(None, "--user-id", "-u", help="Filter by user ID (Langfuse)"),
+    after: Optional[str] = typer.Option(None, "--after", "--from", help="Filter sessions after date"),
+    before: Optional[str] = typer.Option(None, "--before", "--to", help="Filter sessions before date"),
+    has_errors: bool = typer.Option(False, "--errors", help="Only show sessions with errors (AIOBS)"),
+    evals_failed: bool = typer.Option(False, "--failed-evals", help="Only show sessions with failed evals (AIOBS)"),
+    min_traces: Optional[int] = typer.Option(None, "--min-traces", help="Min traces (Langfuse)"),
+    max_traces: Optional[int] = typer.Option(None, "--max-traces", help="Max traces (Langfuse)"),
+    min_cost: Optional[float] = typer.Option(None, "--min-cost", help="Minimum cost (Langfuse)"),
+    max_cost: Optional[float] = typer.Option(None, "--max-cost", help="Maximum cost (Langfuse)"),
+    output: Optional[str] = typer.Option(None, "--output", "-o", help="Output format"),
     limit: Optional[int] = typer.Option(None, "--limit", "-n", help="Maximum number of sessions"),
+    page: int = typer.Option(1, "--page", help="Page number (Langfuse)"),
     ids_only: bool = typer.Option(False, "--ids", help="Only show session IDs"),
 ):
-    """Search and filter sessions (AIOBS only)."""
+    """Search and filter sessions."""
     provider = _get_provider()
-    if provider == "aiobs":
+    if provider == "langfuse":
+        from shepherd.cli.langfuse import search_sessions
+        search_sessions(
+            query=query, user_id=user_id, min_traces=min_traces, max_traces=max_traces,
+            min_cost=min_cost, max_cost=max_cost, from_timestamp=after, to_timestamp=before,
+            output=output, limit=limit or 50, page=page, ids_only=ids_only,
+        )
+    elif provider == "aiobs":
         from shepherd.cli.sessions import search_sessions
         search_sessions(
             query=query, label=label, provider=provider_filter, model=model,
@@ -166,8 +217,6 @@ def sessions_search(
     else:
         console = Console()
         console.print(f"[yellow]Provider '{provider}' does not support session search.[/yellow]")
-        console.print("[dim]Switch to aiobs: shepherd config set provider aiobs[/dim]")
-        console.print("[dim]Or use explicit: shepherd aiobs sessions search[/dim]")
         raise typer.Exit(1)
 
 
