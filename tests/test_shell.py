@@ -8,7 +8,7 @@ from typer.testing import CliRunner
 from shepherd.cli.main import app
 from shepherd.cli.shell import SHELL_COMMANDS, ShepherdShell
 from shepherd.models import SessionsResponse
-from shepherd.models.langfuse import LangfuseTracesResponse, LangfuseSessionsResponse, LangfuseTrace
+from shepherd.models.langfuse import LangfuseSessionsResponse, LangfuseTrace, LangfuseTracesResponse
 
 runner = CliRunner()
 

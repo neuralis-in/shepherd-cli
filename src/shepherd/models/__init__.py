@@ -1,13 +1,5 @@
 """Pydantic models for Shepherd CLI."""
 
-from shepherd.models.session import (
-    Callsite,
-    Event,
-    FunctionEvent,
-    Session,
-    SessionsResponse,
-    TraceNode,
-)
 from shepherd.models.langfuse import (
     LangfuseObservation,
     LangfuseObservationsResponse,
@@ -17,6 +9,14 @@ from shepherd.models.langfuse import (
     LangfuseSessionsResponse,
     LangfuseTrace,
     LangfuseTracesResponse,
+)
+from shepherd.models.session import (
+    Callsite,
+    Event,
+    FunctionEvent,
+    Session,
+    SessionsResponse,
+    TraceNode,
 )
 
 __all__ = [

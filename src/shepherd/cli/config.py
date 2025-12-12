@@ -223,7 +223,8 @@ def set_config(
         console.print(f"[red]Unknown key: {key}[/red]")
         console.print(
             "[dim]Available keys: provider, aiobs.api_key, aiobs.endpoint, "
-            "langfuse.public_key, langfuse.secret_key, langfuse.host, cli.output_format, cli.color[/dim]"
+            "langfuse.public_key, langfuse.secret_key, langfuse.host, "
+            "cli.output_format, cli.color[/dim]"
         )
         raise typer.Exit(1)
 

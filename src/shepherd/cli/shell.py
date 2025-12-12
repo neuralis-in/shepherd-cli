@@ -41,17 +41,21 @@ class ShepherdShell:
         """Set up built-in shell commands."""
         # Import here to avoid circular imports
         from shepherd.cli.config import get_config, init_config, set_config, show_config
+        from shepherd.cli.langfuse import (
+            get_session as lf_get_session,
+        )
+        from shepherd.cli.langfuse import (
+            get_trace,
+            list_traces,
+        )
+        from shepherd.cli.langfuse import (
+            list_sessions as lf_list_sessions,
+        )
         from shepherd.cli.sessions import (
             diff_sessions,
             get_session,
             list_sessions,
             search_sessions,
-        )
-        from shepherd.cli.langfuse import (
-            list_traces,
-            get_trace,
-            list_sessions as lf_list_sessions,
-            get_session as lf_get_session,
         )
 
         # AIOBS Sessions commands - pass explicit defaults since typer.Option() returns objects
@@ -196,7 +200,10 @@ class ShepherdShell:
         config = load_config()
         provider = config.default_provider
         provider_color = "magenta" if provider == "langfuse" else "yellow"
-        return f"[bold cyan]shepherd[/bold cyan] [{provider_color}]({provider})[/{provider_color}] [dim]>[/dim] "
+        return (
+            f"[bold cyan]shepherd[/bold cyan] "
+            f"[{provider_color}]({provider})[/{provider_color}] [dim]>[/dim] "
+        )
 
     def _print_welcome(self):
         """Print welcome message."""
@@ -251,9 +258,8 @@ class ShepherdShell:
             cmd for cmd in SHELL_COMMANDS.keys() if cmd.startswith(f"{other_provider} ")
         ]
         if explicit_cmds:
-            self.console.print(
-                f"  [bold {other_color}]{other_provider.upper()} (use explicit prefix)[/bold {other_color}]"
-            )
+            prefix_msg = f"{other_provider.upper()} (use explicit prefix)"
+            self.console.print(f"  [bold {other_color}]{prefix_msg}[/bold {other_color}]")
             for cmd in sorted(explicit_cmds):
                 _, desc = SHELL_COMMANDS[cmd]
                 self.console.print(f"    [green]{cmd:<28}[/green] {desc}")
