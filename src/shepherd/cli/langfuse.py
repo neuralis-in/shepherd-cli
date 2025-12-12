@@ -20,6 +20,7 @@ from shepherd.config import (
 )
 from shepherd.models.langfuse import (
     LangfuseObservation,
+    LangfuseScore,
     LangfuseSession,
     LangfuseSessionsResponse,
     LangfuseTrace,
@@ -95,6 +96,25 @@ def _format_tokens(tokens: int | None) -> str:
     if tokens >= 1000:
         return f"{tokens / 1000:.1f}k"
     return str(tokens)
+
+
+def _format_score_value(score: LangfuseScore) -> str:
+    """Format a score value based on its data type."""
+    if score.data_type == "BOOLEAN":
+        if score.string_value:
+            return score.string_value
+        return "True" if score.value == 1 else "False"
+    elif score.data_type == "CATEGORICAL":
+        return score.string_value or str(score.value) if score.value is not None else "-"
+    else:
+        # NUMERIC
+        if score.value is None:
+            return "-"
+        if isinstance(score.value, float):
+            if score.value == int(score.value):
+                return str(int(score.value))
+            return f"{score.value:.2f}"
+        return str(score.value)
 
 
 def _print_llm_messages(messages: Any) -> None:
@@ -330,7 +350,7 @@ def _build_observation_tree(observations: list[str | LangfuseObservation], tree:
         add_node(obs, tree)
 
 
-def _print_trace_detail(trace: LangfuseTrace) -> None:
+def _print_trace_detail(trace: LangfuseTrace, scores: list[LangfuseScore] | None = None) -> None:
     """Print detailed trace information."""
     # Trace header
     header = f"""[bold]Trace:[/bold]   {trace.id}
@@ -432,6 +452,31 @@ def _print_trace_detail(trace: LangfuseTrace) -> None:
         if len(output_str) > 500:
             output_str = output_str[:500] + "..."
         console.print(Panel(output_str, expand=False, border_style="dim"))
+
+    # Eval Scores
+    if scores:
+        console.print("\n[bold]Eval Scores:[/bold]\n")
+        scores_table = Table(show_header=True, header_style="bold")
+        scores_table.add_column("Name", style="cyan")
+        scores_table.add_column("Value", justify="right")
+        scores_table.add_column("Type", style="dim")
+        scores_table.add_column("Source", style="dim")
+        scores_table.add_column("Comment", style="dim")
+
+        for score in scores:
+            comment = score.comment or ""
+            if len(comment) > 50:
+                comment = comment[:50] + "..."
+
+            scores_table.add_row(
+                score.name,
+                _format_score_value(score),
+                score.data_type.lower() if score.data_type else "-",
+                score.source.lower() if score.source else "-",
+                comment,
+            )
+
+        console.print(scores_table)
 
 
 @traces_app.command("list")
@@ -543,11 +588,19 @@ def get_trace(
     try:
         with _get_client() as client:
             trace = client.get_trace(trace_id)
+            # Fetch scores for this trace
+            scores_response = client.list_scores(trace_id=trace_id, limit=100)
+            # Filter scores to only include those for this specific trace
+            # (in case the API doesn't filter server-side)
+            scores = [s for s in scores_response.data if s.trace_id == trace_id]
 
             if output_format == "json":
-                console.print_json(trace.model_dump_json(indent=2, by_alias=True))
+                # Include scores in JSON output
+                output_data = trace.model_dump(by_alias=True)
+                output_data["scores"] = [s.model_dump(by_alias=True) for s in scores]
+                console.print_json(json.dumps(output_data, indent=2, default=str))
             else:
-                _print_trace_detail(trace)
+                _print_trace_detail(trace, scores=scores)
 
     except AuthenticationError as e:
         console.print(f"[red]Authentication failed:[/red] {e}")

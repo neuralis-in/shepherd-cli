@@ -307,6 +307,8 @@ class LangfuseClient:
         limit: int = 50,
         page: int = 1,
         name: str | None = None,
+        user_id: str | None = None,
+        trace_id: str | None = None,
         from_timestamp: str | None = None,
         to_timestamp: str | None = None,
     ) -> LangfuseScoresResponse:
@@ -316,6 +318,8 @@ class LangfuseClient:
             limit: Maximum number of results per page.
             page: Page number (1-indexed).
             name: Filter by score name.
+            user_id: Filter by user ID.
+            trace_id: Filter by trace ID.
             from_timestamp: Filter by start timestamp.
             to_timestamp: Filter by end timestamp.
 
@@ -329,6 +333,10 @@ class LangfuseClient:
 
         if name:
             params["name"] = name
+        if user_id:
+            params["userId"] = user_id
+        if trace_id:
+            params["traceId"] = trace_id
         if from_timestamp:
             params["fromTimestamp"] = self._parse_timestamp(from_timestamp)
         if to_timestamp:
