@@ -86,7 +86,15 @@ def _format_cost(cost: float | None) -> str:
         return "-"
     if cost < 0.01:
         return f"${cost:.4f}"
-    return f"${cost:.2f}"
+
+
+def _truncate_user_id(user_id: str | None) -> str:
+    """Truncate user ID for display."""
+    if not user_id:
+        return "-"
+    if len(user_id) > 12:
+        return user_id[:12] + "..."
+    return user_id
 
 
 def _format_tokens(tokens: int | None) -> str:
@@ -220,7 +228,8 @@ def _get_client() -> LangfuseClient:
         console.print("[red]Langfuse API keys not configured.[/red]")
         console.print("Run [bold]shepherd config init[/bold] to set up your keys.")
         console.print(
-            "Or set [bold]LANGFUSE_PUBLIC_KEY[/bold] and [bold]LANGFUSE_SECRET_KEY[/bold] environment variables."
+            "Or set [bold]LANGFUSE_PUBLIC_KEY[/bold] and "
+            "[bold]LANGFUSE_SECRET_KEY[/bold] environment variables."
         )
         raise typer.Exit(1)
 
@@ -259,7 +268,7 @@ def _print_traces_table(response: LangfuseTracesResponse) -> None:
             _format_timestamp(trace.timestamp),
             _format_duration(trace.latency),
             _format_cost(trace.total_cost),
-            (trace.user_id[:12] + "...") if trace.user_id and len(trace.user_id) > 12 else trace.user_id or "-",
+            _truncate_user_id(trace.user_id),
             tags,
         )
 
@@ -301,7 +310,6 @@ def _build_observation_tree(observations: list[str | LangfuseObservation], tree:
         return
     
     # Build parent-child relationships
-    obs_by_id: dict[str, LangfuseObservation] = {o.id: o for o in full_observations}
     children: dict[str | None, list[LangfuseObservation]] = {None: []}
 
     for obs in full_observations:
@@ -436,19 +444,26 @@ def _print_trace_detail(trace: LangfuseTrace, scores: list[LangfuseScore] | None
                     _print_llm_output(first_gen.output)
         else:
             # Just show count of observation IDs
-            console.print(f"\n[dim]{len(trace.observations)} observation IDs (use 'traces get' for details)[/dim]")
+            obs_count = len(trace.observations)
+            console.print(f"\n[dim]{obs_count} observation IDs (use 'traces get')[/dim]")
 
     # Trace-level Input/Output preview (if different from LLM calls)
     if trace.input and not trace.observations:
         console.print("\n[bold]Input:[/bold]")
-        input_str = json.dumps(trace.input, indent=2, default=str) if isinstance(trace.input, (dict, list)) else str(trace.input)
+        if isinstance(trace.input, (dict, list)):
+            input_str = json.dumps(trace.input, indent=2, default=str)
+        else:
+            input_str = str(trace.input)
         if len(input_str) > 500:
             input_str = input_str[:500] + "..."
         console.print(Panel(input_str, expand=False, border_style="dim"))
 
     if trace.output:
         console.print("\n[bold]Output:[/bold]")
-        output_str = json.dumps(trace.output, indent=2, default=str) if isinstance(trace.output, (dict, list)) else str(trace.output)
+        if isinstance(trace.output, (dict, list)):
+            output_str = json.dumps(trace.output, indent=2, default=str)
+        else:
+            output_str = str(trace.output)
         if len(output_str) > 500:
             output_str = output_str[:500] + "..."
         console.print(Panel(output_str, expand=False, border_style="dim"))
@@ -684,7 +699,7 @@ def _print_traces_search_results(
             _format_timestamp(trace.timestamp),
             _format_duration(trace.latency),
             _format_cost(trace.total_cost),
-            (trace.user_id[:12] + "...") if trace.user_id and len(trace.user_id) > 12 else trace.user_id or "-",
+            _truncate_user_id(trace.user_id),
             tags,
         )
 
@@ -934,10 +949,11 @@ def _print_sessions_json(response: LangfuseSessionsResponse) -> None:
 def _print_session_detail(session: LangfuseSession) -> None:
     """Print detailed session information."""
     # Session header
+    duration_secs = session.session_duration / 1000 if session.session_duration else None
     header = f"""[bold]Session:[/bold]  {session.id}
 [bold]Created:[/bold]  {_format_timestamp(session.created_at)}
 [bold]Traces:[/bold]   {session.count_traces}
-[bold]Duration:[/bold] {_format_duration(session.session_duration / 1000 if session.session_duration else None)}"""
+[bold]Duration:[/bold] {_format_duration(duration_secs)}"""
 
     if session.user_ids:
         header += f"\n[bold]Users:[/bold]    {', '.join(session.user_ids)}"
@@ -1132,7 +1148,8 @@ def _print_sessions_search_results(
         session_id_display = session.id[:20] + "..." if len(session.id) > 20 else session.id
         if query and query.lower() in session.id.lower():
             pattern = re.compile(re.escape(query), re.IGNORECASE)
-            session_id_display = pattern.sub(f"[bold yellow]{query}[/bold yellow]", session_id_display)
+            highlight = f"[bold yellow]{query}[/bold yellow]"
+            session_id_display = pattern.sub(highlight, session_id_display)
 
         table.add_row(
             session_id_display,
