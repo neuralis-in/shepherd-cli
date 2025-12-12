@@ -1,6 +1,6 @@
 [project]
 name = "shepherd-cli"
-version = "0.0.1"
+version = "0.0.2"
 description = "Debug your AI agents like you debug your code"
 readme = "README.md"
 license = { text = "MIT" }
