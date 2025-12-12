@@ -523,7 +523,10 @@ SAMPLE_LANGFUSE_TRACE_DETAIL = {
     "tags": ["production", "v2"],
     "latency": 4.0,
     "totalCost": 0.00007,
-    "observations": [SAMPLE_LANGFUSE_OBSERVATION, SAMPLE_LANGFUSE_SPAN],  # Full objects when getting
+    "observations": [
+        SAMPLE_LANGFUSE_OBSERVATION,
+        SAMPLE_LANGFUSE_SPAN,
+    ],  # Full objects when getting
 }
 
 SAMPLE_LANGFUSE_SESSION = {

@@ -588,7 +588,9 @@ class TestSessionsDiffCommand:
         with patch("shepherd.cli.main._get_provider", return_value="aiobs"):
             with patch("shepherd.cli.sessions.get_api_key", return_value="test_key"):
                 with patch("shepherd.cli.sessions.AIOBSClient", return_value=mock_client):
-                    result = runner.invoke(app, ["sessions", "diff", "session-diff-001", "nonexistent"])
+                    result = runner.invoke(
+                        app, ["sessions", "diff", "session-diff-001", "nonexistent"]
+                    )
 
         assert result.exit_code == 1
         assert "Session not found" in result.stdout
@@ -819,7 +821,9 @@ class TestProviderAwareRouting:
     def test_traces_list_with_langfuse_provider(self, sample_langfuse_traces_response):
         """Traces list works with langfuse provider."""
         mock_client = MagicMock()
-        mock_client.list_traces.return_value = LangfuseTracesResponse(**sample_langfuse_traces_response)
+        mock_client.list_traces.return_value = LangfuseTracesResponse(
+            **sample_langfuse_traces_response
+        )
         mock_client.__enter__ = MagicMock(return_value=mock_client)
         mock_client.__exit__ = MagicMock(return_value=False)
 
@@ -867,7 +871,9 @@ class TestProviderAwareRouting:
     def test_sessions_list_with_langfuse_provider(self, sample_langfuse_sessions_response):
         """Sessions list routes to langfuse when provider is langfuse."""
         mock_client = MagicMock()
-        mock_client.list_sessions.return_value = LangfuseSessionsResponse(**sample_langfuse_sessions_response)
+        mock_client.list_sessions.return_value = LangfuseSessionsResponse(
+            **sample_langfuse_sessions_response
+        )
         mock_client.__enter__ = MagicMock(return_value=mock_client)
         mock_client.__exit__ = MagicMock(return_value=False)
 
@@ -903,7 +909,9 @@ class TestProviderAwareRouting:
     def test_sessions_search_with_langfuse_provider(self, langfuse_search_sessions_response):
         """Sessions search routes to langfuse when provider is langfuse."""
         mock_client = MagicMock()
-        mock_client.list_sessions.return_value = LangfuseSessionsResponse(**langfuse_search_sessions_response)
+        mock_client.list_sessions.return_value = LangfuseSessionsResponse(
+            **langfuse_search_sessions_response
+        )
         mock_client.__enter__ = MagicMock(return_value=mock_client)
         mock_client.__exit__ = MagicMock(return_value=False)
 
@@ -937,7 +945,9 @@ class TestExplicitProviderCommands:
     def test_langfuse_traces_list(self, sample_langfuse_traces_response):
         """Explicit langfuse traces list works."""
         mock_client = MagicMock()
-        mock_client.list_traces.return_value = LangfuseTracesResponse(**sample_langfuse_traces_response)
+        mock_client.list_traces.return_value = LangfuseTracesResponse(
+            **sample_langfuse_traces_response
+        )
         mock_client.__enter__ = MagicMock(return_value=mock_client)
         mock_client.__exit__ = MagicMock(return_value=False)
 
@@ -967,7 +977,9 @@ class TestExplicitProviderCommands:
     def test_langfuse_sessions_list(self, sample_langfuse_sessions_response):
         """Explicit langfuse sessions list works."""
         mock_client = MagicMock()
-        mock_client.list_sessions.return_value = LangfuseSessionsResponse(**sample_langfuse_sessions_response)
+        mock_client.list_sessions.return_value = LangfuseSessionsResponse(
+            **sample_langfuse_sessions_response
+        )
         mock_client.__enter__ = MagicMock(return_value=mock_client)
         mock_client.__exit__ = MagicMock(return_value=False)
 
@@ -1016,12 +1028,16 @@ class TestLangfuseTracesCommand:
             result = runner.invoke(app, ["langfuse", "traces", "list"])
 
         assert result.exit_code == 1
-        assert "No Langfuse credentials" in result.stdout or "not configured" in result.stdout.lower()
+        assert (
+            "No Langfuse credentials" in result.stdout or "not configured" in result.stdout.lower()
+        )
 
     def test_traces_list_empty(self, empty_langfuse_traces_response):
         """Traces list with no results shows message."""
         mock_client = MagicMock()
-        mock_client.list_traces.return_value = LangfuseTracesResponse(**empty_langfuse_traces_response)
+        mock_client.list_traces.return_value = LangfuseTracesResponse(
+            **empty_langfuse_traces_response
+        )
         mock_client.__enter__ = MagicMock(return_value=mock_client)
         mock_client.__exit__ = MagicMock(return_value=False)
 
@@ -1036,7 +1052,9 @@ class TestLangfuseTracesCommand:
     def test_traces_list_with_limit(self, sample_langfuse_traces_response):
         """Traces list respects limit parameter."""
         mock_client = MagicMock()
-        mock_client.list_traces.return_value = LangfuseTracesResponse(**sample_langfuse_traces_response)
+        mock_client.list_traces.return_value = LangfuseTracesResponse(
+            **sample_langfuse_traces_response
+        )
         mock_client.__enter__ = MagicMock(return_value=mock_client)
         mock_client.__exit__ = MagicMock(return_value=False)
 
@@ -1053,7 +1071,9 @@ class TestLangfuseTracesCommand:
     def test_traces_list_ids_only(self, sample_langfuse_traces_response):
         """Traces list with --ids only shows IDs."""
         mock_client = MagicMock()
-        mock_client.list_traces.return_value = LangfuseTracesResponse(**sample_langfuse_traces_response)
+        mock_client.list_traces.return_value = LangfuseTracesResponse(
+            **sample_langfuse_traces_response
+        )
         mock_client.__enter__ = MagicMock(return_value=mock_client)
         mock_client.__exit__ = MagicMock(return_value=False)
 
@@ -1074,7 +1094,9 @@ class TestLangfuseSessionsCommand:
     def test_sessions_list_empty(self, empty_langfuse_sessions_response):
         """Sessions list with no results shows message."""
         mock_client = MagicMock()
-        mock_client.list_sessions.return_value = LangfuseSessionsResponse(**empty_langfuse_sessions_response)
+        mock_client.list_sessions.return_value = LangfuseSessionsResponse(
+            **empty_langfuse_sessions_response
+        )
         mock_client.__enter__ = MagicMock(return_value=mock_client)
         mock_client.__exit__ = MagicMock(return_value=False)
 
@@ -1098,7 +1120,9 @@ class TestLangfuseSessionsSearchCommand:
     def test_sessions_search_no_filters(self, langfuse_search_sessions_response):
         """Search sessions without filters returns all."""
         mock_client = MagicMock()
-        mock_client.list_sessions.return_value = LangfuseSessionsResponse(**langfuse_search_sessions_response)
+        mock_client.list_sessions.return_value = LangfuseSessionsResponse(
+            **langfuse_search_sessions_response
+        )
         mock_client.__enter__ = MagicMock(return_value=mock_client)
         mock_client.__exit__ = MagicMock(return_value=False)
 
@@ -1114,7 +1138,9 @@ class TestLangfuseSessionsSearchCommand:
     def test_sessions_search_by_query(self, langfuse_search_sessions_response):
         """Search sessions by text query."""
         mock_client = MagicMock()
-        mock_client.list_sessions.return_value = LangfuseSessionsResponse(**langfuse_search_sessions_response)
+        mock_client.list_sessions.return_value = LangfuseSessionsResponse(
+            **langfuse_search_sessions_response
+        )
         mock_client.__enter__ = MagicMock(return_value=mock_client)
         mock_client.__exit__ = MagicMock(return_value=False)
 
@@ -1131,14 +1157,18 @@ class TestLangfuseSessionsSearchCommand:
     def test_sessions_search_by_user_id(self, langfuse_search_sessions_response):
         """Search sessions by user ID."""
         mock_client = MagicMock()
-        mock_client.list_sessions.return_value = LangfuseSessionsResponse(**langfuse_search_sessions_response)
+        mock_client.list_sessions.return_value = LangfuseSessionsResponse(
+            **langfuse_search_sessions_response
+        )
         mock_client.__enter__ = MagicMock(return_value=mock_client)
         mock_client.__exit__ = MagicMock(return_value=False)
 
         with patch("shepherd.cli.langfuse.get_langfuse_public_key", return_value="pk-test"):
             with patch("shepherd.cli.langfuse.get_langfuse_secret_key", return_value="sk-test"):
                 with patch("shepherd.cli.langfuse.LangfuseClient", return_value=mock_client):
-                    result = runner.invoke(app, ["langfuse", "sessions", "search", "--user-id", "alice"])
+                    result = runner.invoke(
+                        app, ["langfuse", "sessions", "search", "--user-id", "alice"]
+                    )
 
         assert result.exit_code == 0
         # Should only show session with alice
@@ -1147,14 +1177,18 @@ class TestLangfuseSessionsSearchCommand:
     def test_sessions_search_by_min_traces(self, langfuse_search_sessions_response):
         """Search sessions with minimum traces filter."""
         mock_client = MagicMock()
-        mock_client.list_sessions.return_value = LangfuseSessionsResponse(**langfuse_search_sessions_response)
+        mock_client.list_sessions.return_value = LangfuseSessionsResponse(
+            **langfuse_search_sessions_response
+        )
         mock_client.__enter__ = MagicMock(return_value=mock_client)
         mock_client.__exit__ = MagicMock(return_value=False)
 
         with patch("shepherd.cli.langfuse.get_langfuse_public_key", return_value="pk-test"):
             with patch("shepherd.cli.langfuse.get_langfuse_secret_key", return_value="sk-test"):
                 with patch("shepherd.cli.langfuse.LangfuseClient", return_value=mock_client):
-                    result = runner.invoke(app, ["langfuse", "sessions", "search", "--min-traces", "5"])
+                    result = runner.invoke(
+                        app, ["langfuse", "sessions", "search", "--min-traces", "5"]
+                    )
 
         assert result.exit_code == 0
         # Only session with 10 traces should match
@@ -1163,7 +1197,9 @@ class TestLangfuseSessionsSearchCommand:
     def test_sessions_search_by_cost_range(self, langfuse_search_sessions_response):
         """Search sessions with cost filters."""
         mock_client = MagicMock()
-        mock_client.list_sessions.return_value = LangfuseSessionsResponse(**langfuse_search_sessions_response)
+        mock_client.list_sessions.return_value = LangfuseSessionsResponse(
+            **langfuse_search_sessions_response
+        )
         mock_client.__enter__ = MagicMock(return_value=mock_client)
         mock_client.__exit__ = MagicMock(return_value=False)
 
@@ -1181,7 +1217,9 @@ class TestLangfuseSessionsSearchCommand:
     def test_sessions_search_ids_only(self, langfuse_search_sessions_response):
         """Search sessions with --ids flag shows only IDs."""
         mock_client = MagicMock()
-        mock_client.list_sessions.return_value = LangfuseSessionsResponse(**langfuse_search_sessions_response)
+        mock_client.list_sessions.return_value = LangfuseSessionsResponse(
+            **langfuse_search_sessions_response
+        )
         mock_client.__enter__ = MagicMock(return_value=mock_client)
         mock_client.__exit__ = MagicMock(return_value=False)
 
@@ -1199,7 +1237,9 @@ class TestLangfuseSessionsSearchCommand:
     def test_sessions_search_json_output(self, langfuse_search_sessions_response):
         """Search sessions with JSON output."""
         mock_client = MagicMock()
-        mock_client.list_sessions.return_value = LangfuseSessionsResponse(**langfuse_search_sessions_response)
+        mock_client.list_sessions.return_value = LangfuseSessionsResponse(
+            **langfuse_search_sessions_response
+        )
         mock_client.__enter__ = MagicMock(return_value=mock_client)
         mock_client.__exit__ = MagicMock(return_value=False)
 
@@ -1215,7 +1255,9 @@ class TestLangfuseSessionsSearchCommand:
     def test_sessions_search_no_results(self, langfuse_search_sessions_response):
         """Search sessions with no matching results."""
         mock_client = MagicMock()
-        mock_client.list_sessions.return_value = LangfuseSessionsResponse(**langfuse_search_sessions_response)
+        mock_client.list_sessions.return_value = LangfuseSessionsResponse(
+            **langfuse_search_sessions_response
+        )
         mock_client.__enter__ = MagicMock(return_value=mock_client)
         mock_client.__exit__ = MagicMock(return_value=False)
 
@@ -1239,7 +1281,9 @@ class TestLangfuseTracesSearchCommand:
     def test_traces_search_no_filters(self, langfuse_search_traces_response):
         """Search traces without filters returns all."""
         mock_client = MagicMock()
-        mock_client.list_traces.return_value = LangfuseTracesResponse(**langfuse_search_traces_response)
+        mock_client.list_traces.return_value = LangfuseTracesResponse(
+            **langfuse_search_traces_response
+        )
         mock_client.__enter__ = MagicMock(return_value=mock_client)
         mock_client.__exit__ = MagicMock(return_value=False)
 
@@ -1255,7 +1299,9 @@ class TestLangfuseTracesSearchCommand:
     def test_traces_search_by_query(self, langfuse_search_traces_response):
         """Search traces by text query."""
         mock_client = MagicMock()
-        mock_client.list_traces.return_value = LangfuseTracesResponse(**langfuse_search_traces_response)
+        mock_client.list_traces.return_value = LangfuseTracesResponse(
+            **langfuse_search_traces_response
+        )
         mock_client.__enter__ = MagicMock(return_value=mock_client)
         mock_client.__exit__ = MagicMock(return_value=False)
 
@@ -1273,14 +1319,18 @@ class TestLangfuseTracesSearchCommand:
     def test_traces_search_by_user_id(self, langfuse_search_traces_response):
         """Search traces by user ID."""
         mock_client = MagicMock()
-        mock_client.list_traces.return_value = LangfuseTracesResponse(**langfuse_search_traces_response)
+        mock_client.list_traces.return_value = LangfuseTracesResponse(
+            **langfuse_search_traces_response
+        )
         mock_client.__enter__ = MagicMock(return_value=mock_client)
         mock_client.__exit__ = MagicMock(return_value=False)
 
         with patch("shepherd.cli.langfuse.get_langfuse_public_key", return_value="pk-test"):
             with patch("shepherd.cli.langfuse.get_langfuse_secret_key", return_value="sk-test"):
                 with patch("shepherd.cli.langfuse.LangfuseClient", return_value=mock_client):
-                    result = runner.invoke(app, ["langfuse", "traces", "search", "--user-id", "bob"])
+                    result = runner.invoke(
+                        app, ["langfuse", "traces", "search", "--user-id", "bob"]
+                    )
 
         assert result.exit_code == 0
         # API filter applied, so mock will return all but client shows results
@@ -1291,14 +1341,18 @@ class TestLangfuseTracesSearchCommand:
     def test_traces_search_by_tag(self, langfuse_search_traces_response):
         """Search traces by tag."""
         mock_client = MagicMock()
-        mock_client.list_traces.return_value = LangfuseTracesResponse(**langfuse_search_traces_response)
+        mock_client.list_traces.return_value = LangfuseTracesResponse(
+            **langfuse_search_traces_response
+        )
         mock_client.__enter__ = MagicMock(return_value=mock_client)
         mock_client.__exit__ = MagicMock(return_value=False)
 
         with patch("shepherd.cli.langfuse.get_langfuse_public_key", return_value="pk-test"):
             with patch("shepherd.cli.langfuse.get_langfuse_secret_key", return_value="sk-test"):
                 with patch("shepherd.cli.langfuse.LangfuseClient", return_value=mock_client):
-                    result = runner.invoke(app, ["langfuse", "traces", "search", "-t", "production"])
+                    result = runner.invoke(
+                        app, ["langfuse", "traces", "search", "-t", "production"]
+                    )
 
         assert result.exit_code == 0
         mock_client.list_traces.assert_called_once()
@@ -1308,7 +1362,9 @@ class TestLangfuseTracesSearchCommand:
     def test_traces_search_by_cost_range(self, langfuse_search_traces_response):
         """Search traces with cost filters."""
         mock_client = MagicMock()
-        mock_client.list_traces.return_value = LangfuseTracesResponse(**langfuse_search_traces_response)
+        mock_client.list_traces.return_value = LangfuseTracesResponse(
+            **langfuse_search_traces_response
+        )
         mock_client.__enter__ = MagicMock(return_value=mock_client)
         mock_client.__exit__ = MagicMock(return_value=False)
 
@@ -1326,7 +1382,9 @@ class TestLangfuseTracesSearchCommand:
     def test_traces_search_by_latency_range(self, langfuse_search_traces_response):
         """Search traces with latency filters."""
         mock_client = MagicMock()
-        mock_client.list_traces.return_value = LangfuseTracesResponse(**langfuse_search_traces_response)
+        mock_client.list_traces.return_value = LangfuseTracesResponse(
+            **langfuse_search_traces_response
+        )
         mock_client.__enter__ = MagicMock(return_value=mock_client)
         mock_client.__exit__ = MagicMock(return_value=False)
 
@@ -1344,7 +1402,9 @@ class TestLangfuseTracesSearchCommand:
     def test_traces_search_by_release(self, langfuse_search_traces_response):
         """Search traces by release."""
         mock_client = MagicMock()
-        mock_client.list_traces.return_value = LangfuseTracesResponse(**langfuse_search_traces_response)
+        mock_client.list_traces.return_value = LangfuseTracesResponse(
+            **langfuse_search_traces_response
+        )
         mock_client.__enter__ = MagicMock(return_value=mock_client)
         mock_client.__exit__ = MagicMock(return_value=False)
 
@@ -1362,7 +1422,9 @@ class TestLangfuseTracesSearchCommand:
     def test_traces_search_ids_only(self, langfuse_search_traces_response):
         """Search traces with --ids flag shows only IDs."""
         mock_client = MagicMock()
-        mock_client.list_traces.return_value = LangfuseTracesResponse(**langfuse_search_traces_response)
+        mock_client.list_traces.return_value = LangfuseTracesResponse(
+            **langfuse_search_traces_response
+        )
         mock_client.__enter__ = MagicMock(return_value=mock_client)
         mock_client.__exit__ = MagicMock(return_value=False)
 
@@ -1381,7 +1443,9 @@ class TestLangfuseTracesSearchCommand:
     def test_traces_search_json_output(self, langfuse_search_traces_response):
         """Search traces with JSON output."""
         mock_client = MagicMock()
-        mock_client.list_traces.return_value = LangfuseTracesResponse(**langfuse_search_traces_response)
+        mock_client.list_traces.return_value = LangfuseTracesResponse(
+            **langfuse_search_traces_response
+        )
         mock_client.__enter__ = MagicMock(return_value=mock_client)
         mock_client.__exit__ = MagicMock(return_value=False)
 
@@ -1397,7 +1461,9 @@ class TestLangfuseTracesSearchCommand:
     def test_traces_search_combined_filters(self, langfuse_search_traces_response):
         """Search traces with multiple filters."""
         mock_client = MagicMock()
-        mock_client.list_traces.return_value = LangfuseTracesResponse(**langfuse_search_traces_response)
+        mock_client.list_traces.return_value = LangfuseTracesResponse(
+            **langfuse_search_traces_response
+        )
         mock_client.__enter__ = MagicMock(return_value=mock_client)
         mock_client.__exit__ = MagicMock(return_value=False)
 
@@ -1406,7 +1472,15 @@ class TestLangfuseTracesSearchCommand:
                 with patch("shepherd.cli.langfuse.LangfuseClient", return_value=mock_client):
                     result = runner.invoke(
                         app,
-                        ["langfuse", "traces", "search", "--release", "v2.1.0", "--max-latency", "10.0"],
+                        [
+                            "langfuse",
+                            "traces",
+                            "search",
+                            "--release",
+                            "v2.1.0",
+                            "--max-latency",
+                            "10.0",
+                        ],
                     )
 
         assert result.exit_code == 0
@@ -1425,7 +1499,9 @@ class TestProviderAwareSearchRouting:
     def test_sessions_search_routes_to_langfuse(self, langfuse_search_sessions_response):
         """Sessions search routes to langfuse when provider is langfuse."""
         mock_client = MagicMock()
-        mock_client.list_sessions.return_value = LangfuseSessionsResponse(**langfuse_search_sessions_response)
+        mock_client.list_sessions.return_value = LangfuseSessionsResponse(
+            **langfuse_search_sessions_response
+        )
         mock_client.__enter__ = MagicMock(return_value=mock_client)
         mock_client.__exit__ = MagicMock(return_value=False)
 
@@ -1444,7 +1520,9 @@ class TestProviderAwareSearchRouting:
     def test_traces_search_routes_to_langfuse(self, langfuse_search_traces_response):
         """Traces search routes to langfuse when provider is langfuse."""
         mock_client = MagicMock()
-        mock_client.list_traces.return_value = LangfuseTracesResponse(**langfuse_search_traces_response)
+        mock_client.list_traces.return_value = LangfuseTracesResponse(
+            **langfuse_search_traces_response
+        )
         mock_client.__enter__ = MagicMock(return_value=mock_client)
         mock_client.__exit__ = MagicMock(return_value=False)
 

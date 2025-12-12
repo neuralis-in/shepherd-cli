@@ -366,4 +366,3 @@ class LangfuseClient:
 
     def __exit__(self, *args) -> None:
         self.close()
-

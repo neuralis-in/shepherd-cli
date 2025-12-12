@@ -85,7 +85,9 @@ def init_config(
                 password=True,
             )
             if not secret_key:
-                console.print("[red]Langfuse secret key is required when public key is provided.[/red]")
+                console.print(
+                    "[red]Langfuse secret key is required when public key is provided.[/red]"
+                )
                 raise typer.Exit(1)
             langfuse_config.secret_key = secret_key
             host = Prompt.ask(

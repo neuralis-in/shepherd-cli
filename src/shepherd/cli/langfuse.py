@@ -129,14 +129,14 @@ def _print_llm_messages(messages: Any) -> None:
     """Print LLM input messages in a readable format."""
     if not messages:
         return
-    
+
     # Handle list of messages (chat format)
     if isinstance(messages, list):
         for msg in messages:
             if isinstance(msg, dict):
                 role = msg.get("role", "unknown")
                 content = msg.get("content", "")
-                
+
                 # Color based on role
                 role_color = {
                     "system": "cyan",
@@ -145,7 +145,7 @@ def _print_llm_messages(messages: Any) -> None:
                     "function": "magenta",
                     "tool": "magenta",
                 }.get(role, "white")
-                
+
                 # Truncate long content
                 if isinstance(content, str):
                     display_content = content[:500] + "..." if len(content) > 500 else content
@@ -160,20 +160,24 @@ def _print_llm_messages(messages: Any) -> None:
                         display_content = display_content[:500] + "..."
                 else:
                     display_content = str(content)[:500]
-                
-                console.print(Panel(
-                    display_content,
-                    title=f"[bold {role_color}]{role}[/bold {role_color}]",
-                    expand=False,
-                    border_style="dim",
-                ))
+
+                console.print(
+                    Panel(
+                        display_content,
+                        title=f"[bold {role_color}]{role}[/bold {role_color}]",
+                        expand=False,
+                        border_style="dim",
+                    )
+                )
     elif isinstance(messages, dict):
         # Single message
-        console.print(Panel(
-            json.dumps(messages, indent=2, default=str)[:500],
-            expand=False,
-            border_style="dim",
-        ))
+        console.print(
+            Panel(
+                json.dumps(messages, indent=2, default=str)[:500],
+                expand=False,
+                border_style="dim",
+            )
+        )
     else:
         # String or other
         console.print(Panel(str(messages)[:500], expand=False, border_style="dim"))
@@ -183,21 +187,23 @@ def _print_llm_output(output: Any) -> None:
     """Print LLM output in a readable format."""
     if not output:
         return
-    
+
     if isinstance(output, dict):
         # Check for assistant message format
         role = output.get("role", "")
         content = output.get("content", "")
-        
+
         if role == "assistant" and content:
             display_content = content[:800] + "..." if len(content) > 800 else content
-            console.print(Panel(
-                display_content,
-                title="[bold yellow]assistant[/bold yellow]",
-                expand=False,
-                border_style="dim",
-            ))
-            
+            console.print(
+                Panel(
+                    display_content,
+                    title="[bold yellow]assistant[/bold yellow]",
+                    expand=False,
+                    border_style="dim",
+                )
+            )
+
             # Check for tool calls
             tool_calls = output.get("tool_calls", [])
             if tool_calls:
@@ -294,21 +300,21 @@ def _print_traces_json(response: LangfuseTracesResponse) -> None:
 
 def _build_observation_tree(observations: list[str | LangfuseObservation], tree: Tree) -> None:
     """Build a rich tree from observations.
-    
+
     Observations can be either:
     - Full LangfuseObservation objects (from get_trace endpoint)
     - String IDs (from list_traces endpoint)
     """
     # Filter to only full observation objects (not string IDs)
     full_observations = [o for o in observations if isinstance(o, LangfuseObservation)]
-    
+
     if not full_observations:
         # If we only have IDs, just show them as a list
         for obs in observations:
             if isinstance(obs, str):
                 tree.add(f"[dim]{obs}[/dim]")
         return
-    
+
     # Build parent-child relationships
     children: dict[str | None, list[LangfuseObservation]] = {None: []}
 
@@ -336,11 +342,11 @@ def _build_observation_tree(observations: list[str | LangfuseObservation], tree:
             label = f"[bold {type_color}]{obs.type.lower()}[/bold {type_color}]"
             if obs.name:
                 label += f" {obs.name}"
-        
+
         # Add latency (in milliseconds)
         if obs.latency:
             label += f" [dim]{_format_duration_ms(obs.latency)}[/dim]"
-        
+
         # Add token info for generations
         if obs.type == "GENERATION" and obs.usage:
             total_tokens = obs.usage.get("total") or obs.usage.get("totalTokens", 0)
@@ -384,7 +390,7 @@ def _print_trace_detail(trace: LangfuseTrace, scores: list[LangfuseScore] | None
     if trace.observations:
         # Filter to only full observation objects
         full_observations = [o for o in trace.observations if isinstance(o, LangfuseObservation)]
-        
+
         console.print("\n[bold]Trace Tree:[/bold]\n")
         tree = Tree(f"[bold]{trace.name or trace.id}[/bold]")
         _build_observation_tree(trace.observations, tree)
@@ -393,7 +399,7 @@ def _print_trace_detail(trace: LangfuseTrace, scores: list[LangfuseScore] | None
         # LLM Calls table (only GENERATION type)
         if full_observations:
             generations = [o for o in full_observations if o.type == "GENERATION"]
-            
+
             if generations:
                 console.print("\n[bold]LLM Calls:[/bold]\n")
                 llm_table = Table(show_header=True, header_style="bold")
@@ -438,7 +444,7 @@ def _print_trace_detail(trace: LangfuseTrace, scores: list[LangfuseScore] | None
                 if first_gen.input:
                     console.print("\n[bold]First LLM Call - Input:[/bold]")
                     _print_llm_messages(first_gen.input)
-                
+
                 if first_gen.output:
                     console.print("\n[bold]First LLM Call - Output:[/bold]")
                     _print_llm_output(first_gen.output)
@@ -833,41 +839,37 @@ def search_traces(
 
             # Text query filter
             if query:
-                filtered_traces = [
-                    t for t in filtered_traces
-                    if _trace_matches_query(t, query)
-                ]
+                filtered_traces = [t for t in filtered_traces if _trace_matches_query(t, query)]
 
             # Release filter (client-side)
             if release:
                 release_lower = release.lower()
                 filtered_traces = [
-                    t for t in filtered_traces
-                    if t.release and release_lower in t.release.lower()
+                    t for t in filtered_traces if t.release and release_lower in t.release.lower()
                 ]
 
             # Cost filters (client-side)
             if min_cost is not None:
                 filtered_traces = [
-                    t for t in filtered_traces
+                    t
+                    for t in filtered_traces
                     if t.total_cost is not None and t.total_cost >= min_cost
                 ]
             if max_cost is not None:
                 filtered_traces = [
-                    t for t in filtered_traces
+                    t
+                    for t in filtered_traces
                     if t.total_cost is not None and t.total_cost <= max_cost
                 ]
 
             # Latency filters (client-side)
             if min_latency is not None:
                 filtered_traces = [
-                    t for t in filtered_traces
-                    if t.latency is not None and t.latency >= min_latency
+                    t for t in filtered_traces if t.latency is not None and t.latency >= min_latency
                 ]
             if max_latency is not None:
                 filtered_traces = [
-                    t for t in filtered_traces
-                    if t.latency is not None and t.latency <= max_latency
+                    t for t in filtered_traces if t.latency is not None and t.latency <= max_latency
                 ]
 
             # Output
@@ -1262,41 +1264,29 @@ def search_sessions(
             # Text query filter
             if query:
                 filtered_sessions = [
-                    s for s in filtered_sessions
-                    if _session_matches_query(s, query)
+                    s for s in filtered_sessions if _session_matches_query(s, query)
                 ]
 
             # User ID filter
             if user_id:
                 user_id_lower = user_id.lower()
                 filtered_sessions = [
-                    s for s in filtered_sessions
+                    s
+                    for s in filtered_sessions
                     if any(user_id_lower in uid.lower() for uid in s.user_ids)
                 ]
 
             # Trace count filters
             if min_traces is not None:
-                filtered_sessions = [
-                    s for s in filtered_sessions
-                    if s.count_traces >= min_traces
-                ]
+                filtered_sessions = [s for s in filtered_sessions if s.count_traces >= min_traces]
             if max_traces is not None:
-                filtered_sessions = [
-                    s for s in filtered_sessions
-                    if s.count_traces <= max_traces
-                ]
+                filtered_sessions = [s for s in filtered_sessions if s.count_traces <= max_traces]
 
             # Cost filters
             if min_cost is not None:
-                filtered_sessions = [
-                    s for s in filtered_sessions
-                    if s.total_cost >= min_cost
-                ]
+                filtered_sessions = [s for s in filtered_sessions if s.total_cost >= min_cost]
             if max_cost is not None:
-                filtered_sessions = [
-                    s for s in filtered_sessions
-                    if s.total_cost <= max_cost
-                ]
+                filtered_sessions = [s for s in filtered_sessions if s.total_cost <= max_cost]
 
             # Output
             if ids_only:
@@ -1317,4 +1307,3 @@ def search_sessions(
     except LangfuseError as e:
         console.print(f"[red]Error:[/red] {e}")
         raise typer.Exit(1)
-

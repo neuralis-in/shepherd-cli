@@ -56,7 +56,9 @@ def traces_list(
     page: int = typer.Option(1, "--page", "-p", help="Page number"),
     name: Optional[str] = typer.Option(None, "--name", help="Filter by trace name"),
     user_id: Optional[str] = typer.Option(None, "--user-id", "-u", help="Filter by user ID"),
-    session_id: Optional[str] = typer.Option(None, "--session-id", "-s", help="Filter by session ID"),
+    session_id: Optional[str] = typer.Option(
+        None, "--session-id", "-s", help="Filter by session ID"
+    ),
     tags: Optional[list[str]] = typer.Option(None, "--tag", "-t", help="Filter by tags"),
     from_timestamp: Optional[str] = typer.Option(None, "--from", help="Filter from timestamp"),
     to_timestamp: Optional[str] = typer.Option(None, "--to", help="Filter to timestamp"),
@@ -66,10 +68,18 @@ def traces_list(
     provider = _get_provider()
     if provider == "langfuse":
         from shepherd.cli.langfuse import list_traces
+
         list_traces(
-            output=output, limit=limit, page=page, name=name, user_id=user_id,
-            session_id=session_id, tags=tags, from_timestamp=from_timestamp,
-            to_timestamp=to_timestamp, ids_only=ids_only,
+            output=output,
+            limit=limit,
+            page=page,
+            name=name,
+            user_id=user_id,
+            session_id=session_id,
+            tags=tags,
+            from_timestamp=from_timestamp,
+            to_timestamp=to_timestamp,
+            ids_only=ids_only,
         )
     else:
         console = Console()
@@ -87,6 +97,7 @@ def traces_get(
     provider = _get_provider()
     if provider == "langfuse":
         from shepherd.cli.langfuse import get_trace
+
         get_trace(trace_id=trace_id, output=output)
     else:
         console = Console()
@@ -100,15 +111,25 @@ def traces_search(
     query: Optional[str] = typer.Argument(None, help="Search query"),
     name: Optional[str] = typer.Option(None, "--name", help="Filter by trace name"),
     user_id: Optional[str] = typer.Option(None, "--user-id", "-u", help="Filter by user ID"),
-    session_id: Optional[str] = typer.Option(None, "--session-id", "-s", help="Filter by session ID"),
+    session_id: Optional[str] = typer.Option(
+        None, "--session-id", "-s", help="Filter by session ID"
+    ),
     tags: Optional[list[str]] = typer.Option(None, "--tag", "-t", help="Filter by tag(s)"),
     release: Optional[str] = typer.Option(None, "--release", "-r", help="Filter by release"),
     min_cost: Optional[float] = typer.Option(None, "--min-cost", help="Minimum cost"),
     max_cost: Optional[float] = typer.Option(None, "--max-cost", help="Maximum cost"),
-    min_latency: Optional[float] = typer.Option(None, "--min-latency", help="Minimum latency (seconds)"),
-    max_latency: Optional[float] = typer.Option(None, "--max-latency", help="Maximum latency (seconds)"),
-    from_timestamp: Optional[str] = typer.Option(None, "--from", "--after", help="Filter from timestamp"),
-    to_timestamp: Optional[str] = typer.Option(None, "--to", "--before", help="Filter to timestamp"),
+    min_latency: Optional[float] = typer.Option(
+        None, "--min-latency", help="Minimum latency (seconds)"
+    ),
+    max_latency: Optional[float] = typer.Option(
+        None, "--max-latency", help="Maximum latency (seconds)"
+    ),
+    from_timestamp: Optional[str] = typer.Option(
+        None, "--from", "--after", help="Filter from timestamp"
+    ),
+    to_timestamp: Optional[str] = typer.Option(
+        None, "--to", "--before", help="Filter to timestamp"
+    ),
     output: Optional[str] = typer.Option(None, "--output", "-o", help="Output format"),
     limit: int = typer.Option(50, "--limit", "-n", help="Maximum number of traces"),
     page: int = typer.Option(1, "--page", "-p", help="Page number"),
@@ -118,12 +139,24 @@ def traces_search(
     provider = _get_provider()
     if provider == "langfuse":
         from shepherd.cli.langfuse import search_traces
+
         search_traces(
-            query=query, name=name, user_id=user_id, session_id=session_id,
-            tags=tags, release=release, min_cost=min_cost, max_cost=max_cost,
-            min_latency=min_latency, max_latency=max_latency,
-            from_timestamp=from_timestamp, to_timestamp=to_timestamp,
-            output=output, limit=limit, page=page, ids_only=ids_only,
+            query=query,
+            name=name,
+            user_id=user_id,
+            session_id=session_id,
+            tags=tags,
+            release=release,
+            min_cost=min_cost,
+            max_cost=max_cost,
+            min_latency=min_latency,
+            max_latency=max_latency,
+            from_timestamp=from_timestamp,
+            to_timestamp=to_timestamp,
+            output=output,
+            limit=limit,
+            page=page,
+            ids_only=ids_only,
         )
     else:
         console = Console()
@@ -145,20 +178,30 @@ def sessions_list(
     output: Optional[str] = typer.Option(None, "--output", "-o", help="Output file path"),
     limit: Optional[int] = typer.Option(None, "--limit", "-n", help="Maximum number of sessions"),
     page: int = typer.Option(1, "--page", "-p", help="Page number (Langfuse only)"),
-    from_timestamp: Optional[str] = typer.Option(None, "--from", help="Filter from timestamp (Langfuse only)"),
-    to_timestamp: Optional[str] = typer.Option(None, "--to", help="Filter to timestamp (Langfuse only)"),
+    from_timestamp: Optional[str] = typer.Option(
+        None, "--from", help="Filter from timestamp (Langfuse only)"
+    ),
+    to_timestamp: Optional[str] = typer.Option(
+        None, "--to", help="Filter to timestamp (Langfuse only)"
+    ),
     ids_only: bool = typer.Option(False, "--ids", help="Only show session IDs"),
 ):
     """List sessions from the current provider."""
     provider = _get_provider()
     if provider == "langfuse":
         from shepherd.cli.langfuse import list_sessions
+
         list_sessions(
-            output=output, limit=limit or 50, page=page,
-            from_timestamp=from_timestamp, to_timestamp=to_timestamp, ids_only=ids_only,
+            output=output,
+            limit=limit or 50,
+            page=page,
+            from_timestamp=from_timestamp,
+            to_timestamp=to_timestamp,
+            ids_only=ids_only,
         )
     else:
         from shepherd.cli.sessions import list_sessions
+
         list_sessions(output=output, limit=limit, ids_only=ids_only)
 
 
@@ -171,24 +214,42 @@ def sessions_get(
     provider = _get_provider()
     if provider == "langfuse":
         from shepherd.cli.langfuse import get_session
+
         get_session(session_id=session_id, output=output)
     else:
         from shepherd.cli.sessions import get_session
+
         get_session(session_id=session_id, output=output)
 
 
 @sessions_app.command("search")
 def sessions_search(
     query: Optional[str] = typer.Argument(None, help="Search query"),
-    label: Optional[list[str]] = typer.Option(None, "--label", "-l", help="Filter by label(s) (AIOBS)"),
-    provider_filter: Optional[str] = typer.Option(None, "--provider", "-p", help="Filter by provider (AIOBS)"),
+    label: Optional[list[str]] = typer.Option(
+        None, "--label", "-l", help="Filter by label(s) (AIOBS)"
+    ),
+    provider_filter: Optional[str] = typer.Option(
+        None, "--provider", "-p", help="Filter by provider (AIOBS)"
+    ),
     model: Optional[str] = typer.Option(None, "--model", "-m", help="Filter by model (AIOBS)"),
-    function: Optional[str] = typer.Option(None, "--function", "-f", help="Filter by function name (AIOBS)"),
-    user_id: Optional[str] = typer.Option(None, "--user-id", "-u", help="Filter by user ID (Langfuse)"),
-    after: Optional[str] = typer.Option(None, "--after", "--from", help="Filter sessions after date"),
-    before: Optional[str] = typer.Option(None, "--before", "--to", help="Filter sessions before date"),
-    has_errors: bool = typer.Option(False, "--errors", help="Only show sessions with errors (AIOBS)"),
-    evals_failed: bool = typer.Option(False, "--failed-evals", help="Only show sessions with failed evals (AIOBS)"),
+    function: Optional[str] = typer.Option(
+        None, "--function", "-f", help="Filter by function name (AIOBS)"
+    ),
+    user_id: Optional[str] = typer.Option(
+        None, "--user-id", "-u", help="Filter by user ID (Langfuse)"
+    ),
+    after: Optional[str] = typer.Option(
+        None, "--after", "--from", help="Filter sessions after date"
+    ),
+    before: Optional[str] = typer.Option(
+        None, "--before", "--to", help="Filter sessions before date"
+    ),
+    has_errors: bool = typer.Option(
+        False, "--errors", help="Only show sessions with errors (AIOBS)"
+    ),
+    evals_failed: bool = typer.Option(
+        False, "--failed-evals", help="Only show sessions with failed evals (AIOBS)"
+    ),
     min_traces: Optional[int] = typer.Option(None, "--min-traces", help="Min traces (Langfuse)"),
     max_traces: Optional[int] = typer.Option(None, "--max-traces", help="Max traces (Langfuse)"),
     min_cost: Optional[float] = typer.Option(None, "--min-cost", help="Minimum cost (Langfuse)"),
@@ -202,17 +263,37 @@ def sessions_search(
     provider = _get_provider()
     if provider == "langfuse":
         from shepherd.cli.langfuse import search_sessions
+
         search_sessions(
-            query=query, user_id=user_id, min_traces=min_traces, max_traces=max_traces,
-            min_cost=min_cost, max_cost=max_cost, from_timestamp=after, to_timestamp=before,
-            output=output, limit=limit or 50, page=page, ids_only=ids_only,
+            query=query,
+            user_id=user_id,
+            min_traces=min_traces,
+            max_traces=max_traces,
+            min_cost=min_cost,
+            max_cost=max_cost,
+            from_timestamp=after,
+            to_timestamp=before,
+            output=output,
+            limit=limit or 50,
+            page=page,
+            ids_only=ids_only,
         )
     elif provider == "aiobs":
         from shepherd.cli.sessions import search_sessions
+
         search_sessions(
-            query=query, label=label, provider=provider_filter, model=model,
-            function=function, after=after, before=before, has_errors=has_errors,
-            evals_failed=evals_failed, output=output, limit=limit, ids_only=ids_only,
+            query=query,
+            label=label,
+            provider=provider_filter,
+            model=model,
+            function=function,
+            after=after,
+            before=before,
+            has_errors=has_errors,
+            evals_failed=evals_failed,
+            output=output,
+            limit=limit,
+            ids_only=ids_only,
         )
     else:
         console = Console()
@@ -230,6 +311,7 @@ def sessions_diff(
     provider = _get_provider()
     if provider == "aiobs":
         from shepherd.cli.sessions import diff_sessions
+
         diff_sessions(session_id1=session_id1, session_id2=session_id2, output=output)
     else:
         console = Console()

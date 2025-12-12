@@ -139,4 +139,3 @@ class LangfuseScoresResponse(BaseModel):
 
     data: list[LangfuseScore] = Field(default_factory=list)
     meta: dict[str, Any] = Field(default_factory=dict)
-

@@ -451,12 +451,15 @@ class TestAIOBSSessionsCommands:
         with patch("shepherd.cli.sessions.get_api_key", return_value="test_key"):
             with patch("shepherd.cli.sessions.AIOBSClient", return_value=mock_client):
                 result = shell._execute_command(
-                    "aiobs sessions search", ["-p", "anthropic", "-l", "env=production", "--has-errors"]
+                    "aiobs sessions search",
+                    ["-p", "anthropic", "-l", "env=production", "--has-errors"],
                 )
 
         assert result is True
 
-    def test_aiobs_sessions_search_with_evals_failed_in_shell(self, search_sessions_with_failed_evals):
+    def test_aiobs_sessions_search_with_evals_failed_in_shell(
+        self, search_sessions_with_failed_evals
+    ):
         shell = ShepherdShell()
         mock_client = MagicMock()
         mock_client.list_sessions.return_value = SessionsResponse(
@@ -538,7 +541,9 @@ class TestLangfuseCommands:
     def test_langfuse_traces_list_in_shell(self, sample_langfuse_traces_response):
         shell = ShepherdShell()
         mock_client = MagicMock()
-        mock_client.list_traces.return_value = LangfuseTracesResponse(**sample_langfuse_traces_response)
+        mock_client.list_traces.return_value = LangfuseTracesResponse(
+            **sample_langfuse_traces_response
+        )
         mock_client.__enter__ = MagicMock(return_value=mock_client)
         mock_client.__exit__ = MagicMock(return_value=False)
 
@@ -568,7 +573,9 @@ class TestLangfuseCommands:
     def test_langfuse_sessions_list_in_shell(self, sample_langfuse_sessions_response):
         shell = ShepherdShell()
         mock_client = MagicMock()
-        mock_client.list_sessions.return_value = LangfuseSessionsResponse(**sample_langfuse_sessions_response)
+        mock_client.list_sessions.return_value = LangfuseSessionsResponse(
+            **sample_langfuse_sessions_response
+        )
         mock_client.__enter__ = MagicMock(return_value=mock_client)
         mock_client.__exit__ = MagicMock(return_value=False)
 
@@ -592,7 +599,9 @@ class TestProviderAwareShellRouting:
         with patch("shepherd.config.load_config", return_value=mock_config):
             shell = ShepherdShell()
             mock_client = MagicMock()
-            mock_client.list_traces.return_value = LangfuseTracesResponse(**sample_langfuse_traces_response)
+            mock_client.list_traces.return_value = LangfuseTracesResponse(
+                **sample_langfuse_traces_response
+            )
             mock_client.__enter__ = MagicMock(return_value=mock_client)
             mock_client.__exit__ = MagicMock(return_value=False)
 
@@ -629,7 +638,9 @@ class TestProviderAwareShellRouting:
         with patch("shepherd.config.load_config", return_value=mock_config):
             shell = ShepherdShell()
             mock_client = MagicMock()
-            mock_client.list_sessions.return_value = LangfuseSessionsResponse(**sample_langfuse_sessions_response)
+            mock_client.list_sessions.return_value = LangfuseSessionsResponse(
+                **sample_langfuse_sessions_response
+            )
             mock_client.__enter__ = MagicMock(return_value=mock_client)
             mock_client.__exit__ = MagicMock(return_value=False)
 

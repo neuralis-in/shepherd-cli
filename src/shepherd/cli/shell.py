@@ -192,6 +192,7 @@ class ShepherdShell:
     def _get_prompt(self) -> str:
         """Get the shell prompt with provider indicator."""
         from shepherd.config import load_config
+
         config = load_config()
         provider = config.default_provider
         provider_color = "magenta" if provider == "langfuse" else "yellow"
@@ -200,10 +201,11 @@ class ShepherdShell:
     def _print_welcome(self):
         """Print welcome message."""
         from shepherd.config import load_config
+
         config = load_config()
         provider = config.default_provider
         provider_color = "magenta" if provider == "langfuse" else "yellow"
-        
+
         welcome = Text()
         welcome.append("🐑 ", style="bold")
         welcome.append("Shepherd Shell", style="bold green")
@@ -226,15 +228,18 @@ class ShepherdShell:
     def _print_help(self):
         """Print help message with available commands based on current provider."""
         from shepherd.config import load_config
+
         config = load_config()
         provider = config.default_provider
         provider_color = "magenta" if provider == "langfuse" else "yellow"
-        
+
         self.console.print("\n[bold]Available Commands:[/bold]\n")
 
         # Show commands for current provider
-        self.console.print(f"  [bold {provider_color}]{provider.upper()} (active provider)[/bold {provider_color}]")
-        if hasattr(self, '_provider_commands') and provider in self._provider_commands:
+        self.console.print(
+            f"  [bold {provider_color}]{provider.upper()} (active provider)[/bold {provider_color}]"
+        )
+        if hasattr(self, "_provider_commands") and provider in self._provider_commands:
             for cmd, (_, desc) in self._provider_commands[provider].items():
                 self.console.print(f"    [green]{cmd:<28}[/green] {desc}")
         self.console.print()
@@ -242,9 +247,13 @@ class ShepherdShell:
         # Show explicit provider commands for the OTHER provider
         other_provider = "aiobs" if provider == "langfuse" else "langfuse"
         other_color = "yellow" if provider == "langfuse" else "magenta"
-        explicit_cmds = [cmd for cmd in SHELL_COMMANDS.keys() if cmd.startswith(f"{other_provider} ")]
+        explicit_cmds = [
+            cmd for cmd in SHELL_COMMANDS.keys() if cmd.startswith(f"{other_provider} ")
+        ]
         if explicit_cmds:
-            self.console.print(f"  [bold {other_color}]{other_provider.upper()} (use explicit prefix)[/bold {other_color}]")
+            self.console.print(
+                f"  [bold {other_color}]{other_provider.upper()} (use explicit prefix)[/bold {other_color}]"
+            )
             for cmd in sorted(explicit_cmds):
                 _, desc = SHELL_COMMANDS[cmd]
                 self.console.print(f"    [green]{cmd:<28}[/green] {desc}")
@@ -274,7 +283,9 @@ class ShepherdShell:
         self.console.print(
             "[dim]Switch provider:[/dim] [cyan]config set provider <langfuse|aiobs>[/cyan]"
         )
-        example_cmd = "traces list --limit 5" if provider == "langfuse" else "sessions list --limit 5"
+        example_cmd = (
+            "traces list --limit 5" if provider == "langfuse" else "sessions list --limit 5"
+        )
         self.console.print(f"[dim]Example:[/dim] [cyan]{example_cmd}[/cyan]\n")
 
     def _parse_command(self, line: str) -> tuple[str, list[str]]:
@@ -293,10 +304,11 @@ class ShepherdShell:
 
         # Get current provider for checking provider-specific commands
         from shepherd.config import load_config
+
         config = load_config()
         provider = config.default_provider
         provider_cmds = set()
-        if hasattr(self, '_provider_commands') and provider in self._provider_commands:
+        if hasattr(self, "_provider_commands") and provider in self._provider_commands:
             provider_cmds = set(self._provider_commands[provider].keys())
 
         # Check for three-word commands first (e.g., "langfuse traces list", "aiobs sessions get")
@@ -338,12 +350,13 @@ class ShepherdShell:
 
         # Get current provider for dynamic command routing
         from shepherd.config import load_config
+
         config = load_config()
         provider = config.default_provider
 
         # Check if this is a provider-agnostic command (traces/sessions without prefix)
         # Route to current provider's implementation
-        if hasattr(self, '_provider_commands') and provider in self._provider_commands:
+        if hasattr(self, "_provider_commands") and provider in self._provider_commands:
             if cmd in self._provider_commands[provider]:
                 func, _ = self._provider_commands[provider][cmd]
                 try:
@@ -445,7 +458,7 @@ class ShepherdShell:
         # Add collected labels if any
         if labels:
             kwargs["label"] = labels
-        
+
         # Add collected tags if any
         if tags:
             kwargs["tags"] = tags
